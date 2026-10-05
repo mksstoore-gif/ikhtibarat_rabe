@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'package:flutter/material.dart' show FontWeight, TextDirection, TextPainter, TextSpan, TextStyle;
+import 'package:flutter/material.dart' show FontWeight, TextPainter, TextSpan, TextStyle;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -265,7 +265,7 @@ class PdfService {
           height:1.35,
         ),
       ),
-      textDirection:TextDirection.rtl,
+      textDirection:ui.TextDirection.rtl,
       textAlign:align,
     )..layout(maxWidth:width);
     painter.paint(canvas,ui.Offset(x,y));
