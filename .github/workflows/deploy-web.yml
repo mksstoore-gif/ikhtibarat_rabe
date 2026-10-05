@@ -35,6 +35,7 @@ jobs:
           if [ ! -d web ]; then
             flutter create --platforms=web --project-name ikhtibarat_rabe .
           fi
+          rm -f test/widget_test.dart
 
       - name: Set Arabic web title
         run: |
