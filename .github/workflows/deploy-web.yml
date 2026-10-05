@@ -61,7 +61,17 @@ jobs:
       - run: flutter test
 
       - name: Build Flutter web
-        run: flutter build web --release --base-href "https://cdn.jsdelivr.net/gh/mksstoore-gif/ikhtibarat_rabe@web-dist/"
+        run: flutter build web --release --base-href "/"
+
+      - name: Point web assets to CDN
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("build/web/index.html")
+          s=p.read_text()
+          s=s.replace('<base href="/">','<base href="https://cdn.jsdelivr.net/gh/mksstoore-gif/ikhtibarat_rabe@web-dist/">')
+          p.write_text(s)
+          PY
 
       - name: Publish web files
         uses: peaceiris/actions-gh-pages@v4
