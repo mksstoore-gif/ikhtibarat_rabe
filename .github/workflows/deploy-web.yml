@@ -1,0 +1,86 @@
+name: Deploy Web App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "lib/**"
+      - "assets/**"
+      - "pubspec.yaml"
+      - ".github/workflows/deploy-web.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Create web platform
+        run: |
+          if [ ! -d web ]; then
+            flutter create --platforms=web --project-name ikhtibarat_rabe .
+          fi
+
+      - name: Set Arabic web title
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("web/index.html")
+          s=p.read_text()
+          s=s.replace("<title>ikhtibarat_rabe</title>","<title>اختبارات الصف الرابع</title>")
+          s=s.replace('content="ikhtibarat_rabe"','content="اختبارات الصف الرابع"')
+          p.write_text(s)
+          m=Path("web/manifest.json")
+          if m.exists():
+              import json
+              data=json.loads(m.read_text())
+              data["name"]="اختبارات الصف الرابع"
+              data["short_name"]="اختبارات رابع"
+              data["description"]="اختبارات تدريبية للصف الرابع الابتدائي"
+              data["dir"]="rtl"
+              data["lang"]="ar"
+              m.write_text(json.dumps(data,ensure_ascii=False,indent=2))
+          PY
+
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+      - name: Build Flutter web
+        run: flutter build web --release --base-href "/ikhtibarat_rabe/"
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
