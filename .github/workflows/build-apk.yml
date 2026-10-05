@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [ "main", "master" ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,17 +17,27 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Create Android platform if missing
+
+      - name: Prepare Android project
         run: |
           if [ ! -d android ]; then
             flutter create --platforms=android --org sa.ikhtibarat --project-name ikhtibarat_rabe .
           fi
           rm -f test/widget_test.dart
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          s = s.replace('android:label="ikhtibarat_rabe"', 'android:label="اختبارات الصف الرابع"')
+          p.write_text(s)
+          PY
+
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
       - run: flutter build apk --release
+
       - uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
+          name: grade-four-tests-apk
           path: build/app/outputs/flutter-apk/app-release.apk
