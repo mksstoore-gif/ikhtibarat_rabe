@@ -1,16 +1,49 @@
 import 'package:flutter/material.dart';
 import '../data/curriculum_repository.dart';
+
 class SettingsScreen extends StatelessWidget{
   const SettingsScreen({super.key});
-  @override Widget build(BuildContext context){
+
+  @override
+  Widget build(BuildContext context){
     final repo=CurriculumRepository.instance;
-    return Scaffold(appBar:AppBar(title:const Text('الإعدادات')),body:ListView(padding:const EdgeInsets.all(16),children:[
-      const ListTile(leading:Icon(Icons.school_outlined),title:Text('الصف'),subtitle:Text('الرابع الابتدائي')),
-      const ListTile(leading:Icon(Icons.calendar_month_outlined),title:Text('العام الدراسي'),subtitle:Text('1448هـ / 2026-2027م')),
-      const ListTile(leading:Icon(Icons.storage_outlined),title:Text('التخزين'),subtitle:Text('محلي على الجهاز — بدون تسجيل دخول أو خادم')),
-      ListTile(leading:const Icon(Icons.menu_book_outlined),title:const Text('المحتوى'),subtitle:Text('${repo.subjects.length} مواد — ${repo.lessons.length} عنوان درس موثق من الكتب المرفوعة')),
-      ListTile(leading:const Icon(Icons.quiz_outlined),title:const Text('بنك الأسئلة الحالي'),subtitle:Text('${repo.questions.length} سؤال تدريبي أصلي في الرياضيات؛ بقية المواد قيد الإعداد. الدروس المدروسة محفوظة محليًا.')),
-      const ListTile(leading:Icon(Icons.block_outlined),title:Text('الدراسات الإسلامية'),subtitle:Text('القرآن الكريم مستبعد من التطبيق حسب متطلبات المشروع.')),
-    ]));
+    final active=repo.subjects.where((s)=>repo.questionCountForSubject(s.id)>0).length;
+    return Scaffold(
+      appBar:AppBar(title:const Text('معلومات التطبيق')),
+      body:ListView(
+        padding:const EdgeInsets.all(16),
+        children:[
+          _info(Icons.apps_rounded,'اسم التطبيق','اختبارات الصف الرابع'),
+          _info(Icons.school_outlined,'الصف','الرابع الابتدائي'),
+          _info(Icons.calendar_month_outlined,'العام الدراسي','1448هـ / 2026-2027م'),
+          _info(Icons.storage_outlined,'الخصوصية','كل البيانات محفوظة محليًا على الجهاز.'),
+          _info(Icons.quiz_outlined,'بنوك الأسئلة','$active مواد مفعلة — ${repo.questions.length} سؤال تدريبي محلي.'),
+          _info(Icons.picture_as_pdf_outlined,'الطباعة','نسخة طالب + نموذج إجابة بتنسيق ورقة اختبار.'),
+          _info(Icons.block_outlined,'الدراسات الإسلامية','القرآن الكريم غير مدرج حسب إعداد المشروع.'),
+        ],
+      ),
+    );
   }
+
+  Widget _info(IconData icon,String title,String value)=>Container(
+    margin:const EdgeInsets.only(bottom:10),
+    padding:const EdgeInsets.all(14),
+    decoration:BoxDecoration(
+      color:Colors.white,
+      borderRadius:BorderRadius.circular(16),
+      border:Border.all(color:const Color(0xFFE5E7EB)),
+    ),
+    child:Row(
+      crossAxisAlignment:CrossAxisAlignment.start,
+      children:[
+        Icon(icon,color:const Color(0xFF2563EB)),
+        const SizedBox(width:12),
+        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text(title,style:const TextStyle(fontWeight:FontWeight.w800)),
+          const SizedBox(height:3),
+          Text(value,style:const TextStyle(color:Color(0xFF64748B))),
+        ])),
+      ],
+    ),
+  );
 }
