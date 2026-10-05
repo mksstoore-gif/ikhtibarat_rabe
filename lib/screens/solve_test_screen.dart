@@ -26,7 +26,6 @@ class _SolveTestState extends State<SolveTestScreen>{
   @override
   Widget build(BuildContext context){
     final total=widget.test.questions.length;
-    final current=widget.test.questions[index];
     return Scaffold(
       appBar:AppBar(
         title:Text(widget.test.subjectName,style:const TextStyle(fontWeight:FontWeight.w800)),
