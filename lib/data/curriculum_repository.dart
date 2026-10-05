@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'models.dart';
 import 'math_question_bank.dart';
+import 'training_question_bank.dart';
 
 class CurriculumRepository {
   CurriculumRepository._();
@@ -28,7 +29,9 @@ class CurriculumRepository {
         }
       }
     }
-    questions.addAll(MathQuestionBank.build(lessons));
+    questions
+      ..addAll(MathQuestionBank.build(lessons))
+      ..addAll(TrainingQuestionBank.build(lessons));
     _loaded=true;
   }
 
