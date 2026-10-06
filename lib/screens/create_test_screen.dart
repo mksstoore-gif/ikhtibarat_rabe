@@ -19,6 +19,8 @@ class _CreateTestState extends State<CreateTestScreen> {
   final repo = CurriculumRepository.instance;
   final generator = TestGenerator();
   final studentController = TextEditingController();
+  final schoolController = TextEditingController();
+  final classController = TextEditingController();
   final titleController = TextEditingController(text: 'اختبار تدريبي');
 
   String? subjectId;
@@ -48,6 +50,8 @@ class _CreateTestState extends State<CreateTestScreen> {
   @override
   void dispose() {
     studentController.dispose();
+    schoolController.dispose();
+    classController.dispose();
     titleController.dispose();
     super.dispose();
   }
@@ -607,6 +611,22 @@ class _CreateTestState extends State<CreateTestScreen> {
               ),
               const SizedBox(height: 12),
               TextField(
+                controller: schoolController,
+                decoration: const InputDecoration(
+                  labelText: 'اسم المدرسة (اختياري)',
+                  prefixIcon: Icon(Icons.account_balance_rounded),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: classController,
+                decoration: const InputDecoration(
+                  labelText: 'الفصل (مثال: 4/أ)',
+                  prefixIcon: Icon(Icons.groups_rounded),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
                 controller: titleController,
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
@@ -716,6 +736,30 @@ class _CreateTestState extends State<CreateTestScreen> {
                     ? 'اختبار تدريبي'
                     : titleController.text.trim(),
               ),
+              if (studentController.text.trim().isNotEmpty) ...[
+                const _ReviewDivider(),
+                _ReviewRow(
+                  icon: Icons.person_rounded,
+                  label: 'الطالب',
+                  value: studentController.text.trim(),
+                ),
+              ],
+              if (schoolController.text.trim().isNotEmpty) ...[
+                const _ReviewDivider(),
+                _ReviewRow(
+                  icon: Icons.account_balance_rounded,
+                  label: 'المدرسة',
+                  value: schoolController.text.trim(),
+                ),
+              ],
+              if (classController.text.trim().isNotEmpty) ...[
+                const _ReviewDivider(),
+                _ReviewRow(
+                  icon: Icons.groups_rounded,
+                  label: 'الفصل',
+                  value: classController.text.trim(),
+                ),
+              ],
             ],
           ),
         ),
@@ -781,6 +825,8 @@ class _CreateTestState extends State<CreateTestScreen> {
         bank: repo.questions,
         title: titleController.text,
         studentName: studentController.text,
+        schoolName: schoolController.text,
+        className: classController.text,
       );
       Navigator.pushReplacement(
         context,

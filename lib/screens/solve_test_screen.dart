@@ -259,10 +259,10 @@ class _SolveTestState extends State<SolveTestScreen> {
               OutlinedButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
-                  _showPdfMenu();
+                  _pdfAction('result_share');
                 },
                 icon: const Icon(Icons.picture_as_pdf_rounded),
-                label: const Text('طباعة / PDF'),
+                label: const Text('مشاركة تقرير النتيجة PDF'),
               ),
             ],
           ),
@@ -320,6 +320,13 @@ class _SolveTestState extends State<SolveTestScreen> {
               subtitle: 'نسخة الطالب + نموذج الإجابة',
               onTap: () => Navigator.pop(context, 'bundle_share'),
             ),
+            if (submitted)
+              _PdfAction(
+                icon: Icons.assessment_rounded,
+                title: 'تقرير نتيجة الطالب',
+                subtitle: 'الدرجة + النسبة + نقاط المراجعة والتوصية',
+                onTap: () => Navigator.pop(context, 'result_share'),
+              ),
           ],
         ),
       ),
@@ -329,6 +336,16 @@ class _SolveTestState extends State<SolveTestScreen> {
 
   Future<void> _pdfAction(String action) async {
     final service = PdfService();
+    if (action == 'result_share') {
+      if (!submitted) return;
+      final bytes = await service.buildResultPdf(
+        widget.test,
+        earnedScore: earned,
+        answers: answers,
+      );
+      await service.share(bytes, filename: 'تقرير_نتيجة_الطالب.pdf');
+      return;
+    }
     final isBundle = action.startsWith('bundle');
     final answersVersion = action.startsWith('answers');
     final bytes = isBundle
