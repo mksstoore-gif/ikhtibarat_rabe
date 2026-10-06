@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/app_database.dart';
+import '../data/curriculum_repository.dart';
+import '../data/models.dart';
 import '../theme/app_theme.dart';
 
 class ProgressScreen extends StatelessWidget {
@@ -15,268 +17,157 @@ class ProgressScreen extends StatelessWidget {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-
           final rows = snapshot.data!;
           if (rows.isEmpty) {
             return const _EmptyProgress();
           }
 
-          final correct = rows.fold<int>(
-            0,
-            (sum, row) => sum + ((row['correct_count'] as int?) ?? 0),
-          );
-          final wrong = rows.fold<int>(
-            0,
-            (sum, row) => sum + ((row['wrong_count'] as int?) ?? 0),
-          );
-          final total = correct + wrong;
-          final average = total == 0 ? 0 : (correct / total * 100).round();
+          var correctTotal = 0;
+          var wrongTotal = 0;
+          for (final row in rows) {
+            correctTotal += row['correct_count'] as int;
+            wrongTotal += row['wrong_count'] as int;
+          }
+          final attempts = correctTotal + wrongTotal;
+          final overall =
+              attempts == 0 ? 0 : (correctTotal / attempts * 100).round();
 
           return ListView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
             children: [
-              _ProgressHero(
-                percentage: average,
-                correct: correct,
-                wrong: wrong,
-                skills: rows.length,
+              _OverallCard(
+                percentage: overall,
+                skillCount: rows.length,
+                attempts: attempts,
               ),
               const SizedBox(height: 24),
               const Text(
                 'تحليل المهارات',
                 style: TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 20,
+                  color: AppColors.text,
+                  fontSize: 21,
                   fontWeight: FontWeight.w900,
                 ),
               ),
               const SizedBox(height: 4),
               const Text(
-                'مرتبة حسب أكثر المهارات احتياجًا للمراجعة.',
+                'ابدأ بالمهارات الأقل نسبة ثم أعد الاختبار',
                 style: TextStyle(
                   color: AppColors.muted,
-                  fontSize: 13,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 14),
-              ...rows.map((row) {
-                final ok = (row['correct_count'] as int?) ?? 0;
-                final bad = (row['wrong_count'] as int?) ?? 0;
-                final attempts = ok + bad;
-                final percentage =
-                    attempts == 0 ? 0 : (ok / attempts * 100).round();
-                final skillId = row['skill_id']?.toString() ?? '';
-                return _SkillCard(
-                  label: _prettySkill(skillId),
-                  correct: ok,
-                  wrong: bad,
-                  percentage: percentage,
-                );
-              }),
+              ...rows.map(
+                (row) => Padding(
+                  padding: const EdgeInsets.only(bottom: 11),
+                  child: _SkillCard(row: row),
+                ),
+              ),
             ],
           );
         },
       ),
     );
   }
-
-  static String _prettySkill(String id) {
-    if (id.trim().isEmpty) return 'مهارة عامة';
-    final value = id
-        .replaceAll(RegExp(r'[_\-]+'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    return value;
-  }
 }
 
-class _ProgressHero extends StatelessWidget {
+class _OverallCard extends StatelessWidget {
   final int percentage;
-  final int correct;
-  final int wrong;
-  final int skills;
+  final int skillCount;
+  final int attempts;
 
-  const _ProgressHero({
+  const _OverallCard({
     required this.percentage,
-    required this.correct,
-    required this.wrong,
-    required this.skills,
+    required this.skillCount,
+    required this.attempts,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(19),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
         gradient: const LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [AppColors.navy, Color(0xFF30285A), AppColors.primary],
+          colors: [AppColors.navy, AppColors.navySoft],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(.18),
-            blurRadius: 28,
-            offset: const Offset(0, 14),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(29),
+        boxShadow: AppShadows.glow(AppColors.navy),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(.10),
-                  borderRadius: BorderRadius.circular(18),
+          SizedBox(
+            width: 96,
+            height: 96,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: CircularProgressIndicator(
+                    value: percentage / 100,
+                    strokeWidth: 8,
+                    strokeCap: StrokeCap.round,
+                    color: AppColors.gold,
+                    backgroundColor: Colors.white.withOpacity(.09),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.insights_rounded,
-                  color: Colors.white,
-                  size: 30,
+                Text(
+                  percentage.toString() + '%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'صورة واضحة عن التقدم',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    SizedBox(height: 3),
-                    Text(
-                      'تتحدث تلقائيًا بعد كل اختبار',
-                      style: TextStyle(
-                        color: Color(0xFFCBC8E8),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _ScoreRing(value: percentage),
-            ],
-          ),
-          const SizedBox(height: 22),
-          Row(
-            children: [
-              Expanded(
-                child: _HeroMetric(
-                  value: '$correct',
-                  label: 'إجابة صحيحة',
-                  icon: Icons.check_circle_rounded,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _HeroMetric(
-                  value: '$wrong',
-                  label: 'تحتاج مراجعة',
-                  icon: Icons.refresh_rounded,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _HeroMetric(
-                  value: '$skills',
-                  label: 'مهارة مقاسة',
-                  icon: Icons.auto_graph_rounded,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScoreRing extends StatelessWidget {
-  final int value;
-  const _ScoreRing({required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 70,
-      height: 70,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircularProgressIndicator(
-            value: value / 100,
-            strokeWidth: 7,
-            backgroundColor: Colors.white.withOpacity(.12),
-            color: AppColors.gold,
-          ),
-          Text(
-            '$value%',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroMetric extends StatelessWidget {
-  final String value;
-  final String label;
-  final IconData icon;
-
-  const _HeroMetric({
-    required this.value,
-    required this.label,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.08),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(.08)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: Colors.white.withOpacity(.88), size: 20),
-          const SizedBox(height: 5),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withOpacity(.62),
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'مؤشر الإتقان',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  skillCount.toString() +
+                      ' مهارة  •  ' +
+                      attempts.toString() +
+                      ' إجابة محللة',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(.60),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  percentage >= 80
+                      ? 'المستوى ممتاز. حافظ على المراجعة.'
+                      : percentage >= 60
+                          ? 'المستوى جيد، وبعض المهارات تحتاج تثبيت.'
+                          : 'ابدأ بالمهارات الأقل نسبة وكرر التدريب.',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(.82),
+                    height: 1.45,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -286,117 +177,125 @@ class _HeroMetric extends StatelessWidget {
 }
 
 class _SkillCard extends StatelessWidget {
-  final String label;
-  final int correct;
-  final int wrong;
-  final int percentage;
-
-  const _SkillCard({
-    required this.label,
-    required this.correct,
-    required this.wrong,
-    required this.percentage,
-  });
+  final Map<String, Object?> row;
+  const _SkillCard({required this.row});
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = percentage >= 80
+    final correct = row['correct_count'] as int;
+    final wrong = row['wrong_count'] as int;
+    final total = correct + wrong;
+    final percent = total == 0 ? 0 : (correct / total * 100).round();
+    final info = _skillInfo(row['skill_id'].toString());
+    final color = percent >= 80
         ? AppColors.success
-        : percentage >= 60
+        : percent >= 60
             ? AppColors.gold
             : AppColors.danger;
-    final status = percentage >= 80
-        ? 'متقن'
-        : percentage >= 60
-            ? 'جيد'
-            : 'يحتاج تقوية';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 11),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.navy.withOpacity(.035),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
-          ),
-        ],
+        boxShadow: AppShadows.soft(),
       ),
       child: Column(
         children: [
           Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
-                  color: accent.withOpacity(.10),
-                  borderRadius: BorderRadius.circular(14),
+                  color: color.withOpacity(.10),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(Icons.bolt_rounded, color: accent),
+                child: Icon(
+                  _subjectIcon(info.subjectId),
+                  color: color,
+                  size: 23,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.navy,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      info.lessonName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14.5,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      info.subjectName,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: accent.withOpacity(.09),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    color: accent,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 11,
-                  ),
+              Text(
+                percent.toString() + '%',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 13),
           ClipRRect(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(99),
             child: LinearProgressIndicator(
-              value: percentage / 100,
-              minHeight: 9,
-              backgroundColor: AppColors.background,
-              color: accent,
+              value: percent / 100,
+              minHeight: 7,
+              color: color,
+              backgroundColor: color.withOpacity(.10),
             ),
           ),
-          const SizedBox(height: 9),
+          const SizedBox(height: 10),
           Row(
             children: [
               Text(
-                '$percentage%',
-                style: TextStyle(
-                  color: accent,
-                  fontWeight: FontWeight.w900,
+                'صحيح ' + correct.toString(),
+                style: const TextStyle(
+                  color: AppColors.success,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'خطأ ' + wrong.toString(),
+                style: const TextStyle(
+                  color: AppColors.danger,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               const Spacer(),
               Text(
-                '$correct صحيح  •  $wrong مراجعة',
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                percent >= 80
+                    ? 'متقنة'
+                    : percent >= 60
+                        ? 'تحتاج تثبيت'
+                        : 'أولوية للمراجعة',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],
@@ -405,53 +304,96 @@ class _SkillCard extends StatelessWidget {
       ),
     );
   }
+
+  _SkillInfo _skillInfo(String skillId) {
+    final repo = CurriculumRepository.instance;
+    Question? question;
+    for (final candidate in repo.questions) {
+      if (candidate.skillId == skillId) {
+        question = candidate;
+        break;
+      }
+    }
+    if (question == null) {
+      return const _SkillInfo(
+        subjectId: '',
+        subjectName: 'مهارة تدريبية',
+        lessonName: 'مهارة تدريبية',
+      );
+    }
+    return _SkillInfo(
+      subjectId: question.subjectId,
+      subjectName: repo.subjectName(question.subjectId),
+      lessonName: repo.lessonName(question.lessonId),
+    );
+  }
+
+  IconData _subjectIcon(String id) => switch (id) {
+        'math' => Icons.calculate_rounded,
+        'arabic' => Icons.menu_book_rounded,
+        'science' => Icons.science_rounded,
+        'social' => Icons.public_rounded,
+        'islamic' => Icons.auto_stories_rounded,
+        _ => Icons.insights_rounded,
+      };
+}
+
+class _SkillInfo {
+  final String subjectId;
+  final String subjectName;
+  final String lessonName;
+
+  const _SkillInfo({
+    required this.subjectId,
+    required this.subjectName,
+    required this.lessonName,
+  });
 }
 
 class _EmptyProgress extends StatelessWidget {
   const _EmptyProgress();
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: const Column(
+  Widget build(BuildContext context) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.insights_rounded,
-                size: 54,
-                color: AppColors.primary,
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  color: AppColors.successSoft,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: const Icon(
+                  Icons.insights_rounded,
+                  size: 36,
+                  color: AppColors.success,
+                ),
               ),
-              SizedBox(height: 14),
-              Text(
-                'لا توجد بيانات كافية بعد',
+              const SizedBox(height: 16),
+              const Text(
+                'نحتاج أول اختبار',
                 style: TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 19,
+                  color: AppColors.text,
+                  fontSize: 20,
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              SizedBox(height: 7),
-              Text(
-                'بعد حل أول اختبار سيظهر هنا مستوى الطالب والمهارات التي تحتاج مراجعة.',
+              const SizedBox(height: 6),
+              const Text(
+                'بعد حل الاختبارات سيحلل التطبيق المهارات ويعرض نقاط القوة وما يحتاج مراجعة.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.muted,
-                  height: 1.55,
+                  height: 1.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
+      );
 }
