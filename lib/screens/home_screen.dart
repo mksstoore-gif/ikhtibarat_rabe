@@ -7,6 +7,7 @@ import 'create_test_screen.dart';
 import 'history_screen.dart';
 import 'progress_screen.dart';
 import 'settings_screen.dart';
+import 'study_summary_screen.dart';
 import 'subjects_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -161,6 +162,15 @@ class HomeScreen extends StatelessWidget {
                     subtitle: 'متابعة ذكية بدون تعقيد أو حسابات',
                   ),
                   const SizedBox(height: 14),
+                  _ParentAction(
+                    icon: Icons.menu_book_rounded,
+                    title: 'إنشاء ملخص للمذاكرة',
+                    subtitle: 'اختر الدروس واحصل على ملخص مرتب جاهز للطباعة PDF.',
+                    tint: AppColors.infoSoft,
+                    iconColor: AppColors.info,
+                    onTap: () => _open(context, const StudySummaryScreen()),
+                  ),
+                  const SizedBox(height: 10),
                   _ParentAction(
                     icon: Icons.checklist_rtl_rounded,
                     title: 'الدروس المدروسة',
