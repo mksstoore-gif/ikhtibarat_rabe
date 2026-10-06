@@ -35,7 +35,7 @@ class Question {
   const Question({required this.id,required this.subjectId,required this.unitId,required this.lessonId,required this.skillId,required this.type,required this.difficulty,required this.question,required this.options,required this.correctAnswer,required this.explanation,required this.score,required this.isOfficial});
 }
 class GeneratedTest {
-  final String id,subjectId,subjectName,title,studentName;
+  final String id,subjectId,subjectName,title,studentName,schoolName,className;
   final List<String> lessonIds,lessonNames;
   final List<Question> questions;
   final DateTime createdAt;
@@ -49,6 +49,8 @@ class GeneratedTest {
     this.lessonNames=const [],
     this.title='اختبار',
     this.studentName='',
+    this.schoolName='',
+    this.className='',
   });
   int get totalScore => questions.fold(0,(s,q)=>s+q.score);
 }
