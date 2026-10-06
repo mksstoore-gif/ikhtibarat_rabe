@@ -97,84 +97,7 @@ jobs:
       - run: flutter test
 
       - name: Build Flutter web
-        run: flutter build web --release --base-href "/"
-
-      - name: Add offline PWA service worker
-        run: |
-          cat > build/web/sw.js <<'SW'
-          const CACHE = 'grade-four-tests-v1';
-          const CORE = [
-            './',
-            './index.html',
-            './manifest.json',
-            './flutter_bootstrap.js',
-            './icons/Icon-192.png',
-            './icons/Icon-512.png'
-          ];
-
-          self.addEventListener('install', event => {
-            event.waitUntil(
-              caches.open(CACHE).then(cache => cache.addAll(CORE))
-            );
-            self.skipWaiting();
-          });
-
-          self.addEventListener('activate', event => {
-            event.waitUntil(
-              caches.keys().then(keys =>
-                Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))
-              )
-            );
-            self.clients.claim();
-          });
-
-          self.addEventListener('fetch', event => {
-            if (event.request.method !== 'GET') return;
-
-            if (event.request.mode === 'navigate') {
-              event.respondWith(
-                fetch(event.request)
-                  .then(response => {
-                    const copy = response.clone();
-                    caches.open(CACHE).then(cache => cache.put(event.request, copy));
-                    return response;
-                  })
-                  .catch(() => caches.match('./index.html'))
-              );
-              return;
-            }
-
-            event.respondWith(
-              caches.match(event.request).then(cached => {
-                if (cached) return cached;
-                return fetch(event.request).then(response => {
-                  if (!response || response.status !== 200) return response;
-                  const copy = response.clone();
-                  caches.open(CACHE).then(cache => cache.put(event.request, copy));
-                  return response;
-                });
-              })
-            );
-          });
-          SW
-
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("build/web/index.html")
-          s = p.read_text()
-          registration = """
-          <script>
-            if ('serviceWorker' in navigator) {
-              window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(() => {});
-              });
-            }
-          </script>
-          """
-          if "register('sw.js')" not in s:
-              s = s.replace("</body>", registration + "\n</body>")
-          p.write_text(s)
-          PY
+        run: flutter build web --release --base-href "/" --pwa-strategy=none
 
       - name: Point web assets to CDN
         run: |
@@ -185,6 +108,14 @@ jobs:
           s = s.replace(
               '<base href="/">',
               '<base href="https://cdn.jsdelivr.net/gh/mksstoore-gif/ikhtibarat_rabe@web-dist/">'
+          )
+          s = s.replace(
+              '<link rel="manifest" href="manifest.json">',
+              '<link rel="manifest" href="https://raw.githack.com/mksstoore-gif/ikhtibarat_rabe/web-dist/manifest.json">'
+          )
+          s = s.replace(
+              'href="icons/Icon-192.png"',
+              'href="https://cdn.jsdelivr.net/gh/mksstoore-gif/ikhtibarat_rabe@web-dist/icons/Icon-192.png"'
           )
           p.write_text(s)
 
