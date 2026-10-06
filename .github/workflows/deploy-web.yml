@@ -11,15 +11,21 @@ on:
       - ".github/workflows/deploy-web.yml"
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: web-dist
+  group: github-pages
   cancel-in-progress: true
 
 jobs:
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -35,25 +41,60 @@ jobs:
           fi
           rm -f test/widget_test.dart
 
-      - name: Set Arabic web title
+      - name: Configure Arabic iPhone PWA
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path("web/index.html")
-          s=p.read_text()
-          s=s.replace("<title>ikhtibarat_rabe</title>","<title>اختبارات الصف الرابع</title>")
-          s=s.replace('content="ikhtibarat_rabe"','content="اختبارات الصف الرابع"')
-          p.write_text(s)
-          m=Path("web/manifest.json")
-          if m.exists():
-              import json
-              data=json.loads(m.read_text())
-              data["name"]="اختبارات الصف الرابع"
-              data["short_name"]="اختبارات رابع"
-              data["description"]="اختبارات تدريبية للصف الرابع الابتدائي"
-              data["dir"]="rtl"
-              data["lang"]="ar"
-              m.write_text(json.dumps(data,ensure_ascii=False,indent=2))
+          import json
+
+          index = Path("web/index.html")
+          s = index.read_text()
+
+          s = s.replace(
+              "<title>ikhtibarat_rabe</title>",
+              "<title>اختبارات الصف الرابع</title>"
+          )
+          s = s.replace(
+              'content="ikhtibarat_rabe"',
+              'content="اختبارات الصف الرابع"'
+          )
+
+          extra = """
+          <meta name="theme-color" content="#6C5CE7">
+          <meta name="mobile-web-app-capable" content="yes">
+          <meta name="apple-mobile-web-app-capable" content="yes">
+          <meta name="apple-mobile-web-app-status-bar-style" content="default">
+          <meta name="apple-mobile-web-app-title" content="اختبارات رابع">
+          <meta name="format-detection" content="telephone=no">
+          <link rel="apple-touch-icon" href="icons/Icon-192.png">
+          """
+          if 'apple-mobile-web-app-capable' not in s:
+              s = s.replace("</head>", extra + "\n</head>")
+
+          s = s.replace(
+              'content="width=device-width, initial-scale=1.0"',
+              'content="width=device-width, initial-scale=1.0, viewport-fit=cover"'
+          )
+          index.write_text(s)
+
+          manifest = Path("web/manifest.json")
+          if manifest.exists():
+              data = json.loads(manifest.read_text())
+              data["name"] = "اختبارات الصف الرابع"
+              data["short_name"] = "اختبارات رابع"
+              data["description"] = "اختبارات وملخصات دراسية للصف الرابع الابتدائي"
+              data["dir"] = "rtl"
+              data["lang"] = "ar"
+              data["display"] = "standalone"
+              data["orientation"] = "portrait-primary"
+              data["start_url"] = "."
+              data["scope"] = "."
+              data["background_color"] = "#F4F5FA"
+              data["theme_color"] = "#6C5CE7"
+              data["categories"] = ["education"]
+              manifest.write_text(
+                  json.dumps(data, ensure_ascii=False, indent=2)
+              )
           PY
 
       - run: flutter pub get
@@ -61,22 +102,95 @@ jobs:
       - run: flutter test
 
       - name: Build Flutter web
-        run: flutter build web --release --base-href "/"
+        run: flutter build web --release --base-href "/ikhtibarat_rabe/"
 
-      - name: Point web assets to CDN
+      - name: Add offline PWA service worker
         run: |
+          cat > build/web/sw.js <<'SW'
+          const CACHE = 'grade-four-tests-v1';
+          const CORE = [
+            './',
+            './index.html',
+            './manifest.json',
+            './flutter_bootstrap.js',
+            './icons/Icon-192.png',
+            './icons/Icon-512.png'
+          ];
+
+          self.addEventListener('install', event => {
+            event.waitUntil(
+              caches.open(CACHE).then(cache => cache.addAll(CORE))
+            );
+            self.skipWaiting();
+          });
+
+          self.addEventListener('activate', event => {
+            event.waitUntil(
+              caches.keys().then(keys =>
+                Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))
+              )
+            );
+            self.clients.claim();
+          });
+
+          self.addEventListener('fetch', event => {
+            if (event.request.method !== 'GET') return;
+
+            if (event.request.mode === 'navigate') {
+              event.respondWith(
+                fetch(event.request)
+                  .then(response => {
+                    const copy = response.clone();
+                    caches.open(CACHE).then(cache => cache.put(event.request, copy));
+                    return response;
+                  })
+                  .catch(() => caches.match('./index.html'))
+              );
+              return;
+            }
+
+            event.respondWith(
+              caches.match(event.request).then(cached => {
+                if (cached) return cached;
+                return fetch(event.request).then(response => {
+                  if (!response || response.status !== 200) return response;
+                  const copy = response.clone();
+                  caches.open(CACHE).then(cache => cache.put(event.request, copy));
+                  return response;
+                });
+              })
+            );
+          });
+          SW
+
           python3 - <<'PY'
           from pathlib import Path
-          p=Path("build/web/index.html")
-          s=p.read_text()
-          s=s.replace('<base href="/">','<base href="https://cdn.jsdelivr.net/gh/mksstoore-gif/ikhtibarat_rabe@web-dist/">')
+          p = Path("build/web/index.html")
+          s = p.read_text()
+          registration = """
+          <script>
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+              });
+            }
+          </script>
+          """
+          if "register('sw.js')" not in s:
+              s = s.replace("</body>", registration + "\n</body>")
           p.write_text(s)
           PY
 
-      - name: Publish web files
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: web-dist
-          publish_dir: ./build/web
-          force_orphan: true
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
