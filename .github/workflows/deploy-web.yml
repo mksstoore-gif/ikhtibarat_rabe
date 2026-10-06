@@ -11,19 +11,14 @@ on:
       - ".github/workflows/deploy-web.yml"
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: github-pages
+  group: web-dist
   cancel-in-progress: true
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
 
     steps:
@@ -102,7 +97,7 @@ jobs:
       - run: flutter test
 
       - name: Build Flutter web
-        run: flutter build web --release --base-href "/ikhtibarat_rabe/"
+        run: flutter build web --release --base-href "/"
 
       - name: Add offline PWA service worker
         run: |
@@ -181,16 +176,31 @@ jobs:
           p.write_text(s)
           PY
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
+      - name: Point web assets to CDN
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("build/web/index.html")
+          s = p.read_text()
+          s = s.replace(
+              '<base href="/">',
+              '<base href="https://cdn.jsdelivr.net/gh/mksstoore-gif/ikhtibarat_rabe@web-dist/">'
+          )
+          p.write_text(s)
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: build/web
+          m = Path("build/web/manifest.json")
+          if m.exists():
+              import json
+              data = json.loads(m.read_text())
+              data["start_url"] = "index.html"
+              data["scope"] = "./"
+              m.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+          PY
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish web files
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: web-dist
+          publish_dir: ./build/web
+          force_orphan: true
