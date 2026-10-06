@@ -33,13 +33,31 @@ class PdfService {
     return doc.save();
   }
 
+  Future<Uint8List> buildResultPdf(
+    GeneratedTest test,{
+    required int earnedScore,
+    required Map<String,String> answers,
+  }) async {
+    final doc=pw.Document();
+    final png=await _renderResultPage(test,earnedScore:earnedScore,answers:answers);
+    doc.addPage(
+      pw.Page(
+        pageFormat:PdfPageFormat.a4,
+        margin:pw.EdgeInsets.zero,
+        build:(_)=>pw.Image(pw.MemoryImage(png),fit:pw.BoxFit.cover),
+      ),
+    );
+    return doc.save();
+  }
+
+
   Future<void> _addVersion(
     pw.Document doc,
     GeneratedTest test,{
     required bool includeAnswers,
     required bool includeExplanations,
   }) async {
-    final perPage=includeAnswers?4:5;
+    final perPage=includeAnswers?3:4;
     final totalPages=(test.questions.length/perPage).ceil();
     var pageNumber=1;
 
@@ -65,6 +83,115 @@ class PdfService {
     }
   }
 
+
+  Future<Uint8List> _renderResultPage(
+    GeneratedTest test,{
+    required int earnedScore,
+    required Map<String,String> answers,
+  }) async {
+    final recorder=ui.PictureRecorder();
+    final canvas=ui.Canvas(recorder,const ui.Rect.fromLTWH(0,0,pageWidthPx,pageHeightPx));
+    canvas.drawRect(
+      const ui.Rect.fromLTWH(0,0,pageWidthPx,pageHeightPx),
+      ui.Paint()..color=const ui.Color(0xFFFFFFFF),
+    );
+    _drawWatermark(canvas);
+
+    canvas.drawRRect(
+      ui.RRect.fromRectAndRadius(
+        const ui.Rect.fromLTWH(60,42,pageWidthPx-120,230),
+        const ui.Radius.circular(24),
+      ),
+      ui.Paint()..color=const ui.Color(0xFF0E1228),
+    );
+    canvas.drawRRect(
+      ui.RRect.fromRectAndRadius(
+        const ui.Rect.fromLTWH(pageWidthPx-190,62,90,56),
+        const ui.Radius.circular(18),
+      ),
+      ui.Paint()..color=const ui.Color(0xFF6C5CE7),
+    );
+    _draw(canvas,'٤',pageWidthPx-180,67,70,32,true,align:ui.TextAlign.center,color:const ui.Color(0xFFFFFFFF));
+    _draw(canvas,'اختبارات رابع',92,70,pageWidthPx-330,30,true,color:const ui.Color(0xFFFFFFFF));
+    _draw(canvas,'تقرير الطالب الذكي',92,111,pageWidthPx-330,17,false,color:const ui.Color(0xFFB9BED4));
+    _draw(canvas,'تقرير نتيجة الاختبار',92,158,pageWidthPx-184,34,true,color:const ui.Color(0xFFFFFFFF));
+    _draw(canvas,test.title,92,205,pageWidthPx-184,20,false,color:const ui.Color(0xFFD9DCEF));
+
+    final date=DateFormat('yyyy/MM/dd').format(DateTime.now());
+    final student=test.studentName.trim().isEmpty?'................................................':test.studentName.trim();
+    final school=test.schoolName.trim().isEmpty?'................................................':test.schoolName.trim();
+    final className=test.className.trim().isEmpty?'____':test.className.trim();
+    final percent=test.totalScore==0?0:(earnedScore/test.totalScore*100).round();
+    final correctCount=test.questions.where((q)=>_norm(answers[q.id]??'')==_norm(q.correctAnswer)).length;
+    final wrongCount=test.questions.length-correctCount;
+
+    double y=310;
+    y=_draw(canvas,'اسم الطالب: $student',90,y,pageWidthPx-180,22,true)+8;
+    y=_draw(canvas,'المدرسة: $school',90,y,pageWidthPx-180,19,false)+6;
+    y=_draw(canvas,'الصف: الرابع الابتدائي        الفصل: $className',90,y,pageWidthPx-180,19,false)+6;
+    y=_draw(canvas,'المادة: ${test.subjectName}        التاريخ: $date',90,y,pageWidthPx-180,19,false)+18;
+
+    canvas.drawRRect(
+      ui.RRect.fromRectAndRadius(
+        ui.Rect.fromLTWH(82,y,pageWidthPx-164,210),
+        const ui.Radius.circular(24),
+      ),
+      ui.Paint()..color=const ui.Color(0xFF0E1228),
+    );
+    _draw(canvas,'النتيجة النهائية',112,y+28,310,19,false,color:const ui.Color(0xFFB9BED4));
+    _draw(canvas,'$percent%',112,y+58,310,54,true,color:const ui.Color(0xFFF5B942));
+    _draw(canvas,'$earnedScore / ${test.totalScore} درجة',112,y+128,340,22,true,color:const ui.Color(0xFFFFFFFF));
+    _draw(canvas,'صحيح: $correctCount',pageWidthPx-480,y+62,300,23,true,color:const ui.Color(0xFF8EE2B8));
+    _draw(canvas,'تحتاج مراجعة: $wrongCount',pageWidthPx-480,y+110,300,21,true,color:const ui.Color(0xFFFF9D9D));
+    y+=240;
+
+    final recommendation=percent>=90
+      ?'ممتاز جدًا. انتقل لاختبار أصعب أو دروس جديدة.'
+      :percent>=80
+        ?'أداء قوي. راجع الأخطاء مرة واحدة ثم أعد اختبارًا قصيرًا.'
+        :percent>=60
+          ?'راجع النقاط الضعيفة ثم نفّذ اختبارًا قصيرًا من 5 أسئلة.'
+          :'ابدأ بالأسئلة الخاطئة، راجع الدرس، ثم أعد التدريب تدريجيًا.';
+    canvas.drawRRect(
+      ui.RRect.fromRectAndRadius(
+        ui.Rect.fromLTWH(82,y,pageWidthPx-164,118),
+        const ui.Radius.circular(18),
+      ),
+      ui.Paint()..color=const ui.Color(0xFFFFF4D8),
+    );
+    _draw(canvas,'توصية التطبيق',108,y+17,pageWidthPx-216,18,true,color:const ui.Color(0xFF7A5A08));
+    _draw(canvas,recommendation,108,y+49,pageWidthPx-216,18,false,color:const ui.Color(0xFF473A14));
+    y+=154;
+
+    final wrong=test.questions.where((q)=>_norm(answers[q.id]??'')!=_norm(q.correctAnswer)).take(5).toList();
+    _draw(canvas,'أهم نقاط المراجعة',90,y,pageWidthPx-180,24,true);
+    y+=40;
+    if(wrong.isEmpty){
+      _draw(canvas,'لا توجد إجابات خاطئة - أحسنت!',95,y,pageWidthPx-190,20,true,color:const ui.Color(0xFF167A4B));
+    }else{
+      for(var i=0;i<wrong.length;i++){
+        final q=wrong[i];
+        canvas.drawRRect(
+          ui.RRect.fromRectAndRadius(
+            ui.Rect.fromLTWH(88,y-4,pageWidthPx-176,88),
+            const ui.Radius.circular(14),
+          ),
+          ui.Paint()..color=const ui.Color(0xFFF9F9FC),
+        );
+        _draw(canvas,'${i+1}. ${q.question}',108,y+7,pageWidthPx-216,17,true);
+        _draw(canvas,'الإجابة الصحيحة: ${q.correctAnswer}',108,y+47,pageWidthPx-216,16,false,color:const ui.Color(0xFF4E3ED4));
+        y+=101;
+      }
+    }
+
+    _draw(canvas,'تم إنشاء التقرير بواسطة تطبيق اختبارات رابع',80,pageHeightPx-64,pageWidthPx-160,15,false,align:ui.TextAlign.center,color:const ui.Color(0xFF8B90A5));
+
+    final picture=recorder.endRecording();
+    final image=await picture.toImage(pageWidthPx.toInt(),pageHeightPx.toInt());
+    final data=await image.toByteData(format:ui.ImageByteFormat.png);
+    return data!.buffer.asUint8List();
+  }
+
   Future<Uint8List> _renderPage(
     GeneratedTest test,
     List<Question> questions,{
@@ -80,6 +207,7 @@ class PdfService {
       const ui.Rect.fromLTWH(0,0,pageWidthPx,pageHeightPx),
       ui.Paint()..color=const ui.Color(0xFFFFFFFF),
     );
+    _drawWatermark(canvas);
 
     final border=ui.Paint()
       ..color=const ui.Color(0xFFCBD5E1)
@@ -88,13 +216,22 @@ class PdfService {
 
     canvas.drawRRect(
       ui.RRect.fromRectAndRadius(
-        const ui.Rect.fromLTWH(60,42,pageWidthPx-120,190),
+        const ui.Rect.fromLTWH(60,42,pageWidthPx-120,260),
         const ui.Radius.circular(18),
       ),
       border,
     );
 
-    double y=62;
+    canvas.drawRRect(
+      ui.RRect.fromRectAndRadius(
+        const ui.Rect.fromLTWH(60,42,pageWidthPx-120,52),
+        const ui.Radius.circular(18),
+      ),
+      ui.Paint()..color=const ui.Color(0xFF6C5CE7),
+    );
+    _draw(canvas,'اختبارات رابع  •  الصف الرابع الابتدائي',88,55,pageWidthPx-176,20,true,align:ui.TextAlign.center,color:const ui.Color(0xFFFFFFFF));
+
+    double y=108;
     y=_draw(
       canvas,
       includeAnswers?'نموذج الإجابة':'اختبار الصف الرابع الابتدائي',
@@ -111,8 +248,11 @@ class PdfService {
     final date=DateFormat('yyyy/MM/dd').format(test.createdAt);
     final student=test.studentName.trim().isEmpty?'................................................':test.studentName.trim();
 
-    y=_draw(canvas,'المادة: ${test.subjectName}        التاريخ: $date        الدرجة: ${test.totalScore}',88,y,pageWidthPx-176,21,false)+5;
-    y=_draw(canvas,'اسم الطالب: $student',88,y,pageWidthPx-176,21,false)+5;
+    final school=test.schoolName.trim().isEmpty?'................................................':test.schoolName.trim();
+    final className=test.className.trim().isEmpty?'____':test.className.trim();
+    y=_draw(canvas,'اسم الطالب: $student',88,y,pageWidthPx-176,20,true)+4;
+    y=_draw(canvas,'المدرسة: $school        الصف: الرابع الابتدائي        الفصل: $className',88,y,pageWidthPx-176,18,false)+4;
+    y=_draw(canvas,'المادة: ${test.subjectName}        التاريخ: $date        الدرجة: ${test.totalScore}',88,y,pageWidthPx-176,18,false)+5;
 
     if(test.lessonNames.isNotEmpty){
       final lessons=test.lessonNames.length>3
@@ -121,7 +261,7 @@ class PdfService {
       y=_draw(canvas,'الدروس: $lessons',88,y,pageWidthPx-176,17,false);
     }
 
-    y=260;
+    y=330;
     for(var i=0;i<questions.length;i++){
       final q=questions[i];
       final number=startNumber+i;
@@ -174,7 +314,7 @@ class PdfService {
 
     _draw(
       canvas,
-      'صفحة $pageNumber من $totalPages',
+      'اختبارات رابع  •  صفحة $pageNumber من $totalPages',
       80,pageHeightPx-58,pageWidthPx-160,16,false,
       align:ui.TextAlign.center,
       color:const ui.Color(0xFF64748B),
@@ -184,6 +324,20 @@ class PdfService {
     final image=await picture.toImage(pageWidthPx.toInt(),pageHeightPx.toInt());
     final data=await image.toByteData(format:ui.ImageByteFormat.png);
     return data!.buffer.asUint8List();
+  }
+
+  void _drawWatermark(ui.Canvas canvas){
+    canvas.save();
+    canvas.translate(pageWidthPx/2,pageHeightPx/2+80);
+    canvas.rotate(-0.24);
+    _draw(
+      canvas,
+      'اختبارات رابع',
+      -430,-44,860,78,true,
+      align:ui.TextAlign.center,
+      color:const ui.Color(0x0D6C5CE7),
+    );
+    canvas.restore();
   }
 
   double _drawTrueFalse(ui.Canvas canvas,double y,String? answer){
