@@ -1,0 +1,149 @@
+import '../data/curriculum_repository.dart';
+import '../data/models.dart';
+
+class StudySummary {
+  final String subjectName;
+  final DateTime createdAt;
+  final List<StudyLessonSummary> lessons;
+
+  const StudySummary({
+    required this.subjectName,
+    required this.createdAt,
+    required this.lessons,
+  });
+}
+
+class StudyLessonSummary {
+  final String lessonId;
+  final String lessonName;
+  final String unitName;
+  final List<String> keyPoints;
+  final List<String> questionsAndAnswers;
+  final List<String> examples;
+
+  const StudyLessonSummary({
+    required this.lessonId,
+    required this.lessonName,
+    required this.unitName,
+    required this.keyPoints,
+    required this.questionsAndAnswers,
+    required this.examples,
+  });
+}
+
+class StudySummaryService {
+  final CurriculumRepository repo;
+  StudySummaryService({CurriculumRepository? repository})
+      : repo = repository ?? CurriculumRepository.instance;
+
+  StudySummary build({
+    required String subjectId,
+    required Set<String> lessonIds,
+  }) {
+    final selected = repo.lessons
+        .where((lesson) =>
+            lesson.subjectId == subjectId && lessonIds.contains(lesson.id))
+        .toList();
+
+    return StudySummary(
+      subjectName: repo.subjectName(subjectId),
+      createdAt: DateTime.now(),
+      lessons: selected.map(_lessonSummary).toList(),
+    );
+  }
+
+  StudyLessonSummary _lessonSummary(LessonInfo lesson) {
+    final questions =
+        repo.questions.where((q) => q.lessonId == lesson.id).toList();
+
+    final points = <String>[];
+    final qa = <String>[];
+    final examples = <String>[];
+
+    for (final q in questions) {
+      if (q.type == QuestionType.trueFalse &&
+          _norm(q.correctAnswer) == _norm('صح')) {
+        _addUnique(points, q.question, limit: 6);
+      }
+    }
+
+    if (points.length < 4) {
+      for (final q in questions) {
+        final explanation = q.explanation.trim();
+        if (explanation.isEmpty || _isGenericExplanation(explanation)) continue;
+        _addUnique(points, explanation, limit: 6);
+      }
+    }
+
+    for (final q in questions) {
+      if (q.type == QuestionType.shortAnswer ||
+          q.type == QuestionType.multipleChoice ||
+          q.type == QuestionType.fillBlank) {
+        _addUnique(
+          qa,
+          '${q.question}\nالإجابة: ${q.correctAnswer}',
+          limit: 4,
+        );
+      }
+    }
+
+    if (lesson.subjectId == 'math') {
+      for (final q in questions) {
+        if (q.type == QuestionType.numeric ||
+            q.type == QuestionType.applied ||
+            q.type == QuestionType.multipleChoice) {
+          _addUnique(
+            examples,
+            '${q.question}\nالناتج: ${q.correctAnswer}',
+            limit: 3,
+          );
+        }
+      }
+    }
+
+    if (points.isEmpty) {
+      points.add('يركز هذا الدرس على فهم وتطبيق: ${lesson.name}.');
+      final answers = questions
+          .map((q) => q.correctAnswer.trim())
+          .where((answer) => answer.isNotEmpty)
+          .toSet()
+          .take(4);
+      for (final answer in answers) {
+        points.add('من الأفكار المهمة في الدرس: $answer.');
+      }
+    }
+
+    return StudyLessonSummary(
+      lessonId: lesson.id,
+      lessonName: lesson.name,
+      unitName: repo.unitName(lesson.unitId),
+      keyPoints: points.take(6).toList(),
+      questionsAndAnswers: qa.take(4).toList(),
+      examples: examples.take(3).toList(),
+    );
+  }
+
+  bool _isGenericExplanation(String value) {
+    const generic = [
+      'العبارة صحيحة.',
+      'العبارة غير صحيحة.',
+      'اختر الإجابة التي توافق مفهوم الدرس.',
+      'راجع الفكرة الأساسية في الدرس.',
+      'إجابة قصيرة مباشرة من مفهوم الدرس.',
+      'سؤال تدريبي أصلي مبني على مهارة الدرس الموثق.',
+    ];
+    return generic.contains(value);
+  }
+
+  void _addUnique(List<String> target, String value, {required int limit}) {
+    if (target.length >= limit) return;
+    final clean = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (clean.isEmpty) return;
+    final normalized = _norm(clean);
+    if (target.any((item) => _norm(item) == normalized)) return;
+    target.add(clean);
+  }
+
+  String _norm(String value) =>
+      value.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
+}
