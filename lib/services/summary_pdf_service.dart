@@ -163,7 +163,7 @@ class SummaryPdfService {
         ui.Rect.fromLTWH(pageWidthPx - 1110, y, 1020, 52),
         const ui.Radius.circular(16),
       ),
-      ui.Paint()..color = color.withValues(alpha: .10),
+      ui.Paint()..color = color.withOpacity(.10),
     );
     _draw(
       canvas,
