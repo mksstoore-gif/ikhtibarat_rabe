@@ -75,14 +75,30 @@ class StudySummaryService {
       }
     }
 
-    for (final q in questions) {
+    // Exam-first review: prioritize the clearest, most testable facts.
+    final ranked = [...questions]..sort((a,b) {
+      int score(Question q) {
+        var v = 0;
+        if (q.type == QuestionType.multipleChoice) v += 5;
+        if (q.type == QuestionType.shortAnswer) v += 4;
+        if (q.type == QuestionType.fillBlank) v += 4;
+        if (q.type == QuestionType.numeric || q.type == QuestionType.applied) v += 5;
+        if (q.difficulty == Difficulty.medium) v += 3;
+        if (q.difficulty == Difficulty.easy) v += 2;
+        if (q.explanation.trim().isNotEmpty && !_isGenericExplanation(q.explanation.trim())) v += 2;
+        return v;
+      }
+      return score(b).compareTo(score(a));
+    });
+
+    for (final q in ranked) {
       if (q.type == QuestionType.shortAnswer ||
           q.type == QuestionType.multipleChoice ||
           q.type == QuestionType.fillBlank) {
         _addUnique(
           qa,
           '${q.question}\nالإجابة: ${q.correctAnswer}',
-          limit: 4,
+          limit: 3,
         );
       }
     }
@@ -117,9 +133,9 @@ class StudySummaryService {
       lessonId: lesson.id,
       lessonName: lesson.name,
       unitName: repo.unitName(lesson.unitId),
-      keyPoints: points.take(6).toList(),
-      questionsAndAnswers: qa.take(4).toList(),
-      examples: examples.take(3).toList(),
+      keyPoints: points.take(4).toList(),
+      questionsAndAnswers: qa.take(3).toList(),
+      examples: examples.take(2).toList(),
     );
   }
 
