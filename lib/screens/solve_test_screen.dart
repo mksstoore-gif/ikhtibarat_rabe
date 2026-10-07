@@ -336,6 +336,13 @@ class _SolveTestState extends State<SolveTestScreen> {
 
   Future<void> _pdfAction(String action) async {
     final service = PdfService();
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
     if (action == 'result_share') {
       if (!submitted) return;
       final bytes = await service.buildResultPdf(
@@ -343,6 +350,7 @@ class _SolveTestState extends State<SolveTestScreen> {
         earnedScore: earned,
         answers: answers,
       );
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
       await service.share(bytes, filename: 'تقرير_نتيجة_الطالب.pdf');
       return;
     }
@@ -356,6 +364,7 @@ class _SolveTestState extends State<SolveTestScreen> {
             includeExplanations: answersVersion,
           );
 
+    if (mounted) Navigator.of(context, rootNavigator: true).pop();
     if (action.endsWith('share')) {
       final filename = isBundle
           ? 'اختبار_ونموذج_الإجابة.pdf'
@@ -365,6 +374,15 @@ class _SolveTestState extends State<SolveTestScreen> {
       await service.share(bytes, filename: filename);
     } else {
       await service.printOrPreview(bytes);
+    }
+    } catch (error) {
+      if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر إنشاء ملف PDF. حاول مرة أخرى. (' + error.runtimeType.toString() + ')')),
+      );
     }
   }
 }
