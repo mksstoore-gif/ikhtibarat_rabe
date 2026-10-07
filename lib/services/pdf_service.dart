@@ -57,7 +57,7 @@ class PdfService {
     required bool includeAnswers,
     required bool includeExplanations,
   }) async {
-    final perPage=includeAnswers?3:4;
+    final perPage=includeAnswers?3:3;
     final totalPages=(test.questions.length/perPage).ceil();
     var pageNumber=1;
 
@@ -262,9 +262,20 @@ class PdfService {
     }
 
     y=330;
+    var lastType = '';
     for(var i=0;i<questions.length;i++){
       final q=questions[i];
       final number=startNumber+i;
+      final typeLabel=_typeLabel(q.type);
+      if(typeLabel!=lastType){
+        canvas.drawRRect(
+          ui.RRect.fromRectAndRadius(ui.Rect.fromLTWH(88,y-2,pageWidthPx-176,38),const ui.Radius.circular(10)),
+          ui.Paint()..color=const ui.Color(0xFFF1EFFF),
+        );
+        _draw(canvas,typeLabel,104,y+6,pageWidthPx-208,17,true,color:const ui.Color(0xFF4E3ED4));
+        y+=50;
+        lastType=typeLabel;
+      }
 
       canvas.drawRRect(
         ui.RRect.fromRectAndRadius(
@@ -425,6 +436,16 @@ class PdfService {
     painter.paint(canvas,ui.Offset(x,y));
     return y+painter.height;
   }
+
+  String _typeLabel(QuestionType type)=>switch(type){
+    QuestionType.multipleChoice=>'اختر الإجابة الصحيحة',
+    QuestionType.trueFalse=>'ضع علامة صح أو خطأ',
+    QuestionType.numeric=>'أوجد الناتج',
+    QuestionType.shortAnswer=>'أجب عن السؤال',
+    QuestionType.reading=>'اقرأ ثم أجب',
+    QuestionType.applied=>'حل المسألة',
+    _=>'أجب عن السؤال',
+  };
 
   String _norm(String value)=>value.replaceAll(RegExp(r'\s+'),' ').trim().toLowerCase();
 
