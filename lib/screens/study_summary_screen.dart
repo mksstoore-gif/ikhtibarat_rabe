@@ -149,7 +149,7 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
                 ),
                 SizedBox(height: 5),
                 Text(
-                  'اختر الدروس، وسيجمع التطبيق أهم الأفكار وأسئلة المراجعة والأمثلة في ملف PDF مرتب.',
+                  'ملخص قصير ومركز على أهم ما يُسأل عنه في الاختبار: الفكرة الأساسية، السؤال المتوقع، والإجابة المباشرة.',
                   style: TextStyle(
                     color: Color(0xFFC9CDE0),
                     height: 1.5,
@@ -317,7 +317,7 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          const _MiniTitle('أهم الأفكار', Icons.lightbulb_rounded),
+          const _MiniTitle('الزبدة التي تحفظها', Icons.lightbulb_rounded),
           ...lesson.keyPoints.map(
             (point) => Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -329,7 +329,7 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
           ),
           if (lesson.questionsAndAnswers.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const _MiniTitle('راجع نفسك', Icons.help_outline_rounded),
+            const _MiniTitle('أسئلة متوقعة في الاختبار', Icons.help_outline_rounded),
             ...lesson.questionsAndAnswers.take(3).map(
                   (item) => Container(
                     margin: const EdgeInsets.only(top: 8),
@@ -344,7 +344,7 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
           ],
           if (lesson.examples.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const _MiniTitle('أمثلة سريعة', Icons.calculate_rounded),
+            const _MiniTitle('مثال مهم', Icons.calculate_rounded),
             ...lesson.examples.take(2).map(
                   (item) => Container(
                     margin: const EdgeInsets.only(top: 8),
