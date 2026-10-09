@@ -131,15 +131,13 @@ class _CreateTestState extends State<CreateTestScreen> {
     if (subjectId == null || lessonIds.isEmpty || selectedTypes.isEmpty) {
       return 0;
     }
-    return repo.questions
-        .where(
-          (question) =>
-              question.subjectId == subjectId &&
-              lessonIds.contains(question.lessonId) &&
-              selectedTypes.contains(question.type) &&
-              selectedDifficulties.contains(question.difficulty),
-        )
-        .length;
+    return TestGenerator.eligibleQuestions(
+      subjectId: subjectId!,
+      lessonIds: lessonIds,
+      types: selectedTypes,
+      difficulties: selectedDifficulties,
+      bank: repo.questions,
+    ).length;
   }
 
   void _selectSubject(String id) {
@@ -567,7 +565,7 @@ class _CreateTestState extends State<CreateTestScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'متاح بهذه الإعدادات: ' + pool.toString() + ' سؤال',
+                  'متاح بهذه الإعدادات: ' + pool.toString() + ' سؤال غير مكرر',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
