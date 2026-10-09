@@ -179,7 +179,7 @@ class PdfService {
           ui.Paint()..color=const ui.Color(0xFFF9F9FC),
         );
         _draw(canvas,'${i+1}. ${q.question}',108,y+7,pageWidthPx-216,17,true);
-        _draw(canvas,'الإجابة الصحيحة: ${q.correctAnswer}',108,y+47,pageWidthPx-216,16,false,color:const ui.Color(0xFF4E3ED4));
+        _draw(canvas,'الإجابة الصحيحة: ${q.correctAnswer}',108,y+47,pageWidthPx-216,16,false,color:const ui.Color(0xFF222222));
         y+=101;
       }
     }
@@ -227,14 +227,14 @@ class PdfService {
         const ui.Rect.fromLTWH(60,42,pageWidthPx-120,52),
         const ui.Radius.circular(18),
       ),
-      ui.Paint()..color=const ui.Color(0xFF6C5CE7),
+      ui.Paint()..color=const ui.Color(0xFF202020),
     );
-    _draw(canvas,'اختبارات رابع  •  الصف الرابع الابتدائي',88,55,pageWidthPx-176,20,true,align:ui.TextAlign.center,color:const ui.Color(0xFFFFFFFF));
+    _draw(canvas,'وزارة التعليم  •  اختبار الصف الرابع الابتدائي',88,55,pageWidthPx-176,20,true,align:ui.TextAlign.center,color:const ui.Color(0xFFFFFFFF));
 
     double y=108;
     y=_draw(
       canvas,
-      includeAnswers?'نموذج الإجابة':'اختبار الصف الرابع الابتدائي',
+      includeAnswers?'نموذج الإجابة للمعلم':'ورقة اختبار الطالب',
       90,y,pageWidthPx-180,34,true,
       align:ui.TextAlign.center,
     )+4;
@@ -262,6 +262,8 @@ class PdfService {
     }
 
     y=330;
+    _draw(canvas,'أجب عن جميع الأسئلة مستعينًا بالله',92,309,pageWidthPx-184,19,true,align:ui.TextAlign.center);
+    canvas.drawLine(ui.Offset(76,321),ui.Offset(pageWidthPx-76,321),ui.Paint()..color=const ui.Color(0xFF222222)..strokeWidth=2);
     var lastType = '';
     for(var i=0;i<questions.length;i++){
       final q=questions[i];
@@ -270,7 +272,7 @@ class PdfService {
       if(typeLabel!=lastType){
         canvas.drawRRect(
           ui.RRect.fromRectAndRadius(ui.Rect.fromLTWH(88,y-2,pageWidthPx-176,38),const ui.Radius.circular(10)),
-          ui.Paint()..color=const ui.Color(0xFFF1EFFF),
+          ui.Paint()..color=const ui.Color(0xFFF2F2F2),
         );
         _draw(canvas,typeLabel,104,y+6,pageWidthPx-208,17,true,color:const ui.Color(0xFF4E3ED4));
         y+=50;
@@ -286,7 +288,8 @@ class PdfService {
       );
       _draw(canvas,'$number',pageWidthPx-130,y+4,44,22,true,align:ui.TextAlign.center);
 
-      final qBottom=_draw(canvas,q.question,92,y,pageWidthPx-250,25,true);
+      _draw(canvas,'الدرجة: ${q.score}',90,y,125,15,false);
+      final qBottom=_draw(canvas,q.question,210,y,pageWidthPx-360,25,true);
       y=qBottom+11;
 
       if(q.type==QuestionType.trueFalse){
@@ -302,11 +305,10 @@ class PdfService {
           y=_draw(canvas,'الإجابة الصحيحة: ${q.correctAnswer}',105,y,pageWidthPx-210,20,true)+7;
         }else{
           y+=5;
-          _answerLine(canvas,y);
-          y+=45;
-          if(q.type==QuestionType.shortAnswer||q.type==QuestionType.reading||q.type==QuestionType.applied){
+          final lines=(q.type==QuestionType.shortAnswer||q.type==QuestionType.reading||q.type==QuestionType.applied)?3:1;
+          for(var line=0;line<lines;line++){
             _answerLine(canvas,y);
-            y+=45;
+            y+=49;
           }
         }
       }
@@ -325,7 +327,7 @@ class PdfService {
 
     _draw(
       canvas,
-      'اختبارات رابع  •  صفحة $pageNumber من $totalPages',
+      'انتهت الأسئلة • مع تمنياتنا بالتوفيق  |  صفحة $pageNumber من $totalPages',
       80,pageHeightPx-58,pageWidthPx-160,16,false,
       align:ui.TextAlign.center,
       color:const ui.Color(0xFF64748B),
