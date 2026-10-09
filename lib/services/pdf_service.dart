@@ -11,7 +11,7 @@ class PdfService {
   static const double pageWidthPx=1240;
   static const double pageHeightPx=1754;
   // Render at lower pixel density to avoid memory exhaustion on phones.
-  static const double _renderScale=0.72;
+  static const double _renderScale=0.82;
 
   Future<Uint8List> buildTestPdf(
     GeneratedTest test,{
@@ -103,27 +103,27 @@ class PdfService {
     required bool includeAnswers,
     required bool includeExplanations,
   }) {
-    var height=_textHeight(q.question,pageWidthPx-360,25,bold:true)+11;
+    var height=_textHeight(q.question,pageWidthPx-360,33,bold:true)+11;
     if(q.type==QuestionType.trueFalse) {
       height+=60;
     } else if(q.options.isNotEmpty) {
       for(final option in q.options) {
-        final optionHeight=_textHeight(option,pageWidthPx-260,20);
-        height+=(optionHeight>34?optionHeight:34)+5;
+        final optionHeight=_textHeight(option,pageWidthPx-260,27);
+        height+=(optionHeight>43?optionHeight:43)+7;
       }
       height+=6;
     } else if(includeAnswers) {
       height+=_textHeight('الإجابة الصحيحة: ${q.correctAnswer}',
-        pageWidthPx-210,20,bold:true)+7;
+        pageWidthPx-210,27,bold:true)+7;
     } else {
       final lines=(q.type==QuestionType.shortAnswer||
         q.type==QuestionType.reading||q.type==QuestionType.applied)?3:1;
-      height+=5+49.0*lines;
+      height+=5+56.0*lines;
     }
     if(includeAnswers&&includeExplanations&&q.explanation.isNotEmpty) {
-      height+=_textHeight('ملاحظة: ${q.explanation}',pageWidthPx-210,17)+8;
+      height+=_textHeight('ملاحظة: ${q.explanation}',pageWidthPx-210,24)+8;
     }
-    return height+18+8; // separator and safety allowance
+    return height+18+12; // separator and safety allowance
   }
 
   Future<void> _addVersion(
@@ -299,7 +299,7 @@ class PdfService {
       ),
       ui.Paint()..color=const ui.Color(0xFF202020),
     );
-    _draw(canvas,'وزارة التعليم  •  اختبار الصف الرابع الابتدائي',88,55,pageWidthPx-176,20,true,align:ui.TextAlign.center,color:const ui.Color(0xFFFFFFFF));
+    _draw(canvas,'اختبار تدريبي للصف الرابع الابتدائي',88,53,pageWidthPx-176,24,true,align:ui.TextAlign.center,color:const ui.Color(0xFFFFFFFF));
 
     double y=108;
     y=_draw(
@@ -332,7 +332,7 @@ class PdfService {
     }
 
     y=330;
-    _draw(canvas,'أجب عن جميع الأسئلة مستعينًا بالله',92,309,pageWidthPx-184,19,true,align:ui.TextAlign.center);
+    _draw(canvas,'أجب عن جميع الأسئلة مستعينًا بالله',92,307,pageWidthPx-184,22,true,align:ui.TextAlign.center);
     canvas.drawLine(ui.Offset(76,321),ui.Offset(pageWidthPx-76,321),ui.Paint()..color=const ui.Color(0xFF222222)..strokeWidth=2);
     var lastType = '';
     for(var i=0;i<questions.length;i++){
@@ -344,7 +344,7 @@ class PdfService {
           ui.RRect.fromRectAndRadius(ui.Rect.fromLTWH(88,y-2,pageWidthPx-176,38),const ui.Radius.circular(10)),
           ui.Paint()..color=const ui.Color(0xFFF2F2F2),
         );
-        _draw(canvas,typeLabel,104,y+6,pageWidthPx-208,17,true,color:const ui.Color(0xFF4E3ED4));
+        _draw(canvas,typeLabel,104,y+3,pageWidthPx-208,22,true,color:const ui.Color(0xFF4E3ED4));
         y+=50;
         lastType=typeLabel;
       }
@@ -356,10 +356,10 @@ class PdfService {
         ),
         ui.Paint()..color=const ui.Color(0xFFF1F5F9),
       );
-      _draw(canvas,'$number',pageWidthPx-130,y+4,44,22,true,align:ui.TextAlign.center);
+      _draw(canvas,'$number',pageWidthPx-130,y+2,44,27,true,align:ui.TextAlign.center);
 
-      _draw(canvas,'الدرجة: ${q.score}',90,y,125,15,false);
-      final qBottom=_draw(canvas,q.question,210,y,pageWidthPx-360,25,true);
+      _draw(canvas,'الدرجة: ${q.score}',90,y,125,19,false);
+      final qBottom=_draw(canvas,q.question,210,y,pageWidthPx-360,33,true);
       y=qBottom+11;
 
       if(q.type==QuestionType.trueFalse){
@@ -367,24 +367,24 @@ class PdfService {
       }else if(q.options.isNotEmpty){
         for(final option in q.options){
           final checked=includeAnswers&&_norm(option)==_norm(q.correctAnswer);
-          y=_drawOption(canvas,option,y,checked)+5;
+          y=_drawOption(canvas,option,y,checked)+7;
         }
         y+=6;
       }else{
         if(includeAnswers){
-          y=_draw(canvas,'الإجابة الصحيحة: ${q.correctAnswer}',105,y,pageWidthPx-210,20,true)+7;
+          y=_draw(canvas,'الإجابة الصحيحة: ${q.correctAnswer}',105,y,pageWidthPx-210,27,true)+7;
         }else{
           y+=5;
           final lines=(q.type==QuestionType.shortAnswer||q.type==QuestionType.reading||q.type==QuestionType.applied)?3:1;
           for(var line=0;line<lines;line++){
             _answerLine(canvas,y);
-            y+=49;
+            y+=56;
           }
         }
       }
 
       if(includeAnswers&&includeExplanations&&q.explanation.isNotEmpty){
-        y=_draw(canvas,'ملاحظة: ${q.explanation}',105,y,pageWidthPx-210,17,false,color:const ui.Color(0xFF475569))+8;
+        y=_draw(canvas,'ملاحظة: ${q.explanation}',105,y,pageWidthPx-210,24,false,color:const ui.Color(0xFF475569))+8;
       }
 
       canvas.drawLine(
@@ -457,8 +457,8 @@ class PdfService {
         ..strokeWidth=2,
     );
     if(checked)_drawCheck(canvas,boxLeft,y+2);
-    final bottom=_draw(canvas,text,110,y,pageWidthPx-260,20,false);
-    return bottom>y+34?bottom:y+34;
+    final bottom=_draw(canvas,text,110,y,pageWidthPx-260,27,false);
+    return bottom>y+43?bottom:y+43;
   }
 
   void _boxWithLabel(ui.Canvas canvas,String label,double x,double y,bool checked){
@@ -471,7 +471,7 @@ class PdfService {
         ..strokeWidth=2,
     );
     if(checked)_drawCheck(canvas,x,y);
-    _draw(canvas,label,x-120,y-1,105,21,true);
+    _draw(canvas,label,x-120,y-3,105,26,true);
   }
 
   void _drawCheck(ui.Canvas canvas,double x,double y){
