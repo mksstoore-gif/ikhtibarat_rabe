@@ -93,4 +93,53 @@ void main() {
       tiny.map((e) => e.id).toList());
   });
 
+  test('Long summaries paginate without losing facts, examples or answers', () {
+    final points = List.generate(9, (i) =>
+      'معلومة مهمة رقم ' + i.toString() +
+      ': التلميذ يراجع الفكرة ثم يطبقها في تمرين مناسب للدرس.');
+    final checks = List.generate(9, (i) =>
+      'السؤال رقم ' + i.toString() +
+      ': ماذا تعلمنا من الدرس؟\nالإجابة: نتدرب ونتحقق من النتيجة.');
+    final examples = List.generate(6, (i) =>
+      'المثال رقم ' + i.toString() + ': تمرين للتطبيق مع شرح الحل.');
+    final summary = StudySummary(
+      subjectName: 'الرياضيات',
+      createdAt: DateTime(2026, 10, 9),
+      lessons: [
+        StudyLessonSummary(
+          lessonId: 'long-lesson', lessonName: 'مراجعة شاملة',
+          unitName: 'الوحدة الأولى', keyPoints: points,
+          questionsAndAnswers: checks, examples: examples,
+        ),
+      ],
+    );
+    final pages = SummaryPdfService().paginateSummaryText(summary);
+    final text = pages.expand((page) => page).toList();
+    expect(pages.length, greaterThan(1));
+    for (final item in [...points, ...checks, ...examples]) {
+      expect(text, contains(item));
+    }
+  });
+
+  test('Larger question formatting keeps all questions in order', () {
+    final questions = List<Question>.generate(20, (i) => Question(
+      id: 'long-' + i.toString(), subjectId: 'science',
+      unitId: 'u', lessonId: 'l', skillId: 's',
+      type: QuestionType.multipleChoice, difficulty: Difficulty.easy,
+      question: 'اختر الإجابة الصحيحة للسؤال رقم ' + i.toString() +
+        ' حول فهم المصطلحات والمعلومات الأساسية في الدرس.',
+      options: const ['الإجابة الأولى مع شرح بسيط',
+        'الإجابة الثانية مع توضيح مختلف',
+        'الخيار الثالث', 'الخيار الرابع'],
+      correctAnswer: 'الخيار الثالث',
+      explanation: 'الإجابة توضح الفكرة الصحيحة.',
+      score: 1, isOfficial: false,
+    ));
+    final pages = PdfService().paginateQuestions(questions,
+      includeAnswers: false, includeExplanations: false);
+    expect(pages.length, greaterThan(1));
+    expect(pages.expand((page) => page).map((q) => q.id).toList(),
+      questions.map((q) => q.id).toList());
+  });
+
 }
