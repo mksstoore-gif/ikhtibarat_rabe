@@ -10,6 +10,8 @@ import '../data/models.dart';
 class PdfService {
   static const double pageWidthPx=1240;
   static const double pageHeightPx=1754;
+  // Render at lower pixel density to avoid memory exhaustion on phones.
+  static const double _renderScale=0.72;
 
   Future<Uint8List> buildTestPdf(
     GeneratedTest test,{
@@ -91,6 +93,7 @@ class PdfService {
   }) async {
     final recorder=ui.PictureRecorder();
     final canvas=ui.Canvas(recorder,const ui.Rect.fromLTWH(0,0,pageWidthPx,pageHeightPx));
+    canvas.scale(_renderScale);
     canvas.drawRect(
       const ui.Rect.fromLTWH(0,0,pageWidthPx,pageHeightPx),
       ui.Paint()..color=const ui.Color(0xFFFFFFFF),
@@ -186,10 +189,7 @@ class PdfService {
 
     _draw(canvas,'تم إنشاء التقرير بواسطة تطبيق اختبارات رابع',80,pageHeightPx-64,pageWidthPx-160,15,false,align:ui.TextAlign.center,color:const ui.Color(0xFF8B90A5));
 
-    final picture=recorder.endRecording();
-    final image=await picture.toImage(pageWidthPx.toInt(),pageHeightPx.toInt());
-    final data=await image.toByteData(format:ui.ImageByteFormat.png);
-    return data!.buffer.asUint8List();
+    return _finishPage(recorder);
   }
 
   Future<Uint8List> _renderPage(
@@ -203,6 +203,7 @@ class PdfService {
   }) async {
     final recorder=ui.PictureRecorder();
     final canvas=ui.Canvas(recorder,const ui.Rect.fromLTWH(0,0,pageWidthPx,pageHeightPx));
+    canvas.scale(_renderScale);
     canvas.drawRect(
       const ui.Rect.fromLTWH(0,0,pageWidthPx,pageHeightPx),
       ui.Paint()..color=const ui.Color(0xFFFFFFFF),
@@ -333,10 +334,24 @@ class PdfService {
       color:const ui.Color(0xFF64748B),
     );
 
+    return _finishPage(recorder);
+  }
+
+  Future<Uint8List> _finishPage(ui.PictureRecorder recorder) async {
     final picture=recorder.endRecording();
-    final image=await picture.toImage(pageWidthPx.toInt(),pageHeightPx.toInt());
-    final data=await image.toByteData(format:ui.ImageByteFormat.png);
-    return data!.buffer.asUint8List();
+    ui.Image? image;
+    try {
+      image=await picture.toImage(
+        (pageWidthPx*_renderScale).round(),
+        (pageHeightPx*_renderScale).round(),
+      );
+      final bytes=await image.toByteData(format:ui.ImageByteFormat.png);
+      if(bytes==null) throw StateError('تعذر تحويل صفحة الاختبار إلى صورة');
+      return Uint8List.fromList(bytes.buffer.asUint8List(bytes.offsetInBytes,bytes.lengthInBytes));
+    } finally {
+      image?.dispose();
+      picture.dispose();
+    }
   }
 
   void _drawWatermark(ui.Canvas canvas){
