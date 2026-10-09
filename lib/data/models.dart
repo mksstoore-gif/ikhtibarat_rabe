@@ -1,3 +1,28 @@
+/// Treat Arabic-Indic and Western digits equally in numeric answers.
+String normalizeStudentAnswer(String value) {
+  const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+  const easternDigits = '۰۱۲۳۴۵۶۷۸۹';
+  final result = StringBuffer();
+  for (final rune in value.runes) {
+    final letter = String.fromCharCode(rune);
+    final arabic = arabicDigits.indexOf(letter);
+    final eastern = easternDigits.indexOf(letter);
+    if (arabic >= 0) {
+      result.write(arabic);
+    } else if (eastern >= 0) {
+      result.write(eastern);
+    } else if (letter == '٫') {
+      result.write('.');
+    } else if (letter != '٬' && letter != ',') {
+      result.write(letter);
+    }
+  }
+  return result.toString()
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim()
+      .toLowerCase();
+}
+
 enum QuestionType { multipleChoice, trueFalse, fillBlank, matching, ordering, shortAnswer, numeric, reading, applied, imageChoice }
 extension QuestionTypeLabel on QuestionType {
   String get label {
