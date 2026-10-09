@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:printing/printing.dart';
 import 'package:flutter/material.dart';
 import '../data/curriculum_repository.dart';
 import '../data/models.dart';
@@ -434,7 +435,23 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
       if (share) {
         await service.share(bytes);
       } else {
-        await service.preview(bytes);
+        // Show the PDF inside the app. A native print dialog is not a
+        // reliable document viewer on all Android phones.
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => Scaffold(
+              appBar: AppBar(title: const Text('عرض ملخص المذاكرة')),
+              body: PdfPreview(
+                build: (_) async => bytes,
+                pdfFileName: 'ملخص_المذاكرة.pdf',
+                canChangeOrientation: false,
+                canChangePageFormat: false,
+                allowPrinting: true,
+                allowSharing: true,
+              ),
+            ),
+          ),
+        );
       }
     } catch (error) {
       if (mounted) {
