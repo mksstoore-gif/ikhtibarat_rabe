@@ -10,4 +10,34 @@ void main(){
     expect(t.questions.length,5);
     expect(t.questions.map((e)=>e.id).toSet().length,5);
   });
+  test('Duplicate stems do not appear in generated exams', () {
+    final bank = [
+      for (var i = 0; i < 9; i++)
+        Question(
+          id: 'd' + i.toString(),
+          subjectId: 'math', unitId: 'u', lessonId: i.isEven ? 'l1' : 'l2',
+          skillId: 's', type: i.isEven
+              ? QuestionType.multipleChoice : QuestionType.shortAnswer,
+          difficulty: Difficulty.easy,
+          question: i < 5 ? 'ما المقصود بالتقدير؟'
+              : 'ما الرقم في السؤال ' + i.toString() + '؟',
+          options: const ['أ', 'ب'],
+          correctAnswer: 'أ', explanation: '', score: 1, isOfficial: false,
+        ),
+    ];
+    final unique = TestGenerator.eligibleQuestions(
+      subjectId: 'math', lessonIds: ['l1', 'l2'],
+      types: [QuestionType.multipleChoice, QuestionType.shortAnswer],
+      difficulties: [Difficulty.easy], bank: bank,
+    );
+    expect(unique.length, 5);
+    final test = TestGenerator(random: Random(3)).generate(
+      subjectId: 'math', subjectName: 'رياضيات', lessonIds: ['l1', 'l2'],
+      types: [QuestionType.multipleChoice, QuestionType.shortAnswer],
+      difficulties: [Difficulty.easy], count: 5, bank: bank,
+    );
+    expect(test.questions.map(TestGenerator.questionKey).toSet().length, 5);
+    expect(test.questions.map((q) => q.lessonId).toSet(), {'l1', 'l2'});
+  });
+
 }
