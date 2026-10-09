@@ -67,7 +67,7 @@ class StudySummaryService {
       }
     }
 
-    if (points.length < 4) {
+    if (points.length < 5) {
       for (final q in questions) {
         final explanation = q.explanation.trim();
         if (explanation.isEmpty || _isGenericExplanation(explanation)) continue;
@@ -92,13 +92,16 @@ class StudySummaryService {
     });
 
     for (final q in ranked) {
-      if (q.type == QuestionType.shortAnswer ||
+      if ((q.type == QuestionType.shortAnswer ||
           q.type == QuestionType.multipleChoice ||
-          q.type == QuestionType.fillBlank) {
+          q.type == QuestionType.fillBlank ||
+          q.type == QuestionType.numeric ||
+          q.type == QuestionType.applied) &&
+          !q.question.startsWith('أي العبارتين الآتيتين صحيحة؟')) {
         _addUnique(
           qa,
           '${q.question}\nالإجابة: ${q.correctAnswer}',
-          limit: 3,
+          limit: 5,
         );
       }
     }
@@ -117,25 +120,31 @@ class StudySummaryService {
       }
     }
 
-    if (points.isEmpty) {
-      points.add('يركز هذا الدرس على فهم وتطبيق: ${lesson.name}.');
-      final answers = questions
-          .map((q) => q.correctAnswer.trim())
-          .where((answer) => answer.isNotEmpty)
-          .toSet()
-          .take(4);
-      for (final answer in answers) {
-        points.add('من الأفكار المهمة في الدرس: $answer.');
+    if (points.isEmpty && lesson.subjectId == 'math') {
+      // Only include worked, bank-backed examples; a bare numeric answer
+      // is not a meaningful study point by itself.
+      for (final question in questions.where((q) =>
+          q.type == QuestionType.numeric ||
+          q.type == QuestionType.applied)) {
+        _addUnique(
+          points,
+          'تدريب سريع: ' + question.question +
+              '\nالإجابة: ' + question.correctAnswer,
+          limit: 2,
+        );
       }
+    }
+    if (points.isEmpty && questions.isNotEmpty) {
+      points.add('راجع أسئلة الدرس وإجاباتها أدناه؛ لا تتوفر نقاط نظرية موثقة في بنك المراجعة.');
     }
 
     return StudyLessonSummary(
       lessonId: lesson.id,
       lessonName: lesson.name,
       unitName: repo.unitName(lesson.unitId),
-      keyPoints: points.take(4).toList(),
-      questionsAndAnswers: qa.take(3).toList(),
-      examples: examples.take(2).toList(),
+      keyPoints: points.take(5).toList(),
+      questionsAndAnswers: qa.take(5).toList(),
+      examples: examples.take(3).toList(),
     );
   }
 
@@ -153,7 +162,8 @@ class StudySummaryService {
 
   void _addUnique(List<String> target, String value, {required int limit}) {
     if (target.length >= limit) return;
-    final clean = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final clean = value.trim().split('\n').map((line) =>
+        line.replaceAll(RegExp(r'[ \t]+'), ' ').trim()).join('\n');
     if (clean.isEmpty) return;
     final normalized = _norm(clean);
     if (target.any((item) => _norm(item) == normalized)) return;
