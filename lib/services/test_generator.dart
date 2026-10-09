@@ -7,7 +7,7 @@ class TestGenerator {
   TestGenerator({Random? random}) : _random = random ?? Random();
 
   static String questionKey(Question q) =>
-      q.question.replaceAll(RegExp(r'\\s+'), ' ').trim().toLowerCase();
+      q.question.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
 
   /// Use the same unique-question pool in the picker and in generation.
   static List<Question> eligibleQuestions({
