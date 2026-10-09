@@ -533,7 +533,7 @@ class PdfService {
     _=>'أجب عن السؤال',
   };
 
-  String _norm(String value)=>value.replaceAll(RegExp(r'\s+'),' ').trim().toLowerCase();
+  String _norm(String value)=>normalizeStudentAnswer(value);
 
   Future<void> printOrPreview(Uint8List bytes) async {
     await Printing.layoutPdf(onLayout:(_)=>bytes);
