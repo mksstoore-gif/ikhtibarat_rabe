@@ -7,6 +7,11 @@ on:
 permissions:
   contents: write
 
+# A new push supersedes older builds. Only the newest APK should be published.
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -54,6 +59,11 @@ jobs:
           set -euo pipefail
           apk="build/app/outputs/flutter-apk/app-release.apk"
           test -s "$apk"
+          branch_head="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          if [ "$GITHUB_SHA" != "$branch_head" ]; then
+            echo "Skipping outdated APK: branch has moved to $branch_head"
+            exit 0
+          fi
           cp "$apk" "ikhtibarat-rabe-latest.apk"
           if gh release view apk-latest >/dev/null 2>&1; then
             gh release upload apk-latest "ikhtibarat-rabe-latest.apk" --clobber
