@@ -40,4 +40,12 @@ void main(){
     expect(test.questions.map((q) => q.lessonId).toSet(), {'l1', 'l2'});
   });
 
+  test('Arabic and Western numerals are graded the same', () {
+    expect(normalizeStudentAnswer('١٢٣٤'), '1234');
+    expect(normalizeStudentAnswer('۱۲۳۴'), '1234');
+    expect(normalizeStudentAnswer('١٬٢٥٠'), '1250');
+    expect(normalizeStudentAnswer('١٢٫٥'), '12.5');
+    expect(normalizeStudentAnswer(' صَحّ '), isNotEmpty);
+  });
+
 }
