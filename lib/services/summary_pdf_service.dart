@@ -11,6 +11,7 @@ import 'summary_service.dart';
 class SummaryPdfService {
   static const double pageWidthPx = 1240;
   static const double pageHeightPx = 1754;
+  static const double _renderScale = 0.72;
 
   Future<Uint8List> build(StudySummary summary) async {
     final doc = pw.Document();
@@ -43,6 +44,7 @@ class SummaryPdfService {
       recorder,
       const ui.Rect.fromLTWH(0, 0, pageWidthPx, pageHeightPx),
     );
+    canvas.scale(_renderScale);
 
     canvas.drawRect(
       const ui.Rect.fromLTWH(0, 0, pageWidthPx, pageHeightPx),
@@ -144,12 +146,19 @@ class SummaryPdfService {
     );
 
     final picture = recorder.endRecording();
-    final image = await picture.toImage(
-      pageWidthPx.toInt(),
-      pageHeightPx.toInt(),
-    );
-    final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    return data!.buffer.asUint8List();
+    ui.Image? image;
+    try {
+      image = await picture.toImage(
+        (pageWidthPx * _renderScale).round(),
+        (pageHeightPx * _renderScale).round(),
+      );
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (data == null) throw StateError('تعذر تحويل صفحة الملخص إلى صورة');
+      return Uint8List.fromList(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+    } finally {
+      image?.dispose();
+      picture.dispose();
+    }
   }
 
   double _sectionTitle(
