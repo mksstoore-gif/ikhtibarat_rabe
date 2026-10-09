@@ -396,16 +396,55 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
     if (action == 'share') await _sharePdf();
   }
 
-  Future<void> _previewPdf() async {
-    final service = SummaryPdfService();
-    final bytes = await service.build(summary!);
-    await service.preview(bytes);
-  }
+  Future<void> _previewPdf() => _exportPdf(share: false);
 
-  Future<void> _sharePdf() async {
+  Future<void> _sharePdf() => _exportPdf(share: true);
+
+  Future<void> _exportPdf({required bool share}) async {
+    final selected = summary;
+    if (selected == null || !mounted) return;
     final service = SummaryPdfService();
-    final bytes = await service.build(summary!);
-    await service.share(bytes);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    late final bytes;
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      bytes = await service.build(selected);
+      if (bytes.isEmpty) throw StateError('ملف PDF فارغ');
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 8),
+            content: Text('تعذر توليد ملخص PDF: $error'),
+          ),
+        );
+      }
+      return;
+    } finally {
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (!mounted) return;
+    try {
+      if (share) {
+        await service.share(bytes);
+      } else {
+        await service.preview(bytes);
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 8),
+            content: Text('تم إنشاء الملخص لكن تعذر فتح PDF: $error'),
+          ),
+        );
+      }
+    }
   }
 }
 
