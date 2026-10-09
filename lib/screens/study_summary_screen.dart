@@ -280,9 +280,9 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(18, 8, 18, 14),
         child: FilledButton.icon(
-          onPressed: _sharePdf,
-          icon: const Icon(Icons.ios_share_rounded),
-          label: const Text('مشاركة الملخص PDF'),
+          onPressed: _previewPdf,
+          icon: const Icon(Icons.picture_as_pdf_rounded),
+          label: const Text('عرض الملخص PDF بخط واضح'),
         ),
       ),
     );
@@ -314,7 +314,7 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
             lesson.unitName,
             style: const TextStyle(
               color: AppColors.muted,
-              fontSize: 11.5,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -325,13 +325,13 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 '• $point',
-                style: const TextStyle(height: 1.55, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 16.5, height: 1.55, fontWeight: FontWeight.w700),
               ),
             ),
           ),
           if (lesson.questionsAndAnswers.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const _MiniTitle('أسئلة متوقعة في الاختبار', Icons.help_outline_rounded),
+            const _MiniTitle('تدرّب قبل الاختبار', Icons.help_outline_rounded),
             ...lesson.questionsAndAnswers.take(3).map(
                   (item) => Container(
                     margin: const EdgeInsets.only(top: 8),
@@ -340,7 +340,7 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
                       color: AppColors.successSoft,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Text(item, style: const TextStyle(height: 1.5)),
+                    child: Text(item, style: const TextStyle(fontSize: 16, height: 1.5, fontWeight: FontWeight.w600)),
                   ),
                 ),
           ],
@@ -355,7 +355,7 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
                       color: AppColors.goldSoft,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Text(item, style: const TextStyle(height: 1.5)),
+                    child: Text(item, style: const TextStyle(fontSize: 16, height: 1.5, fontWeight: FontWeight.w600)),
                   ),
                 ),
           ],
