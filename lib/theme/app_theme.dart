@@ -42,9 +42,17 @@ class AppTheme {
 
     return base.copyWith(
       splashFactory: InkSparkle.splashFactory,
-      textTheme: base.textTheme.apply(
-        bodyColor: AppColors.text,
-        displayColor: AppColors.text,
+      textTheme: base.textTheme.copyWith(
+        bodyLarge: base.textTheme.bodyLarge?.copyWith(
+          fontSize: 17, height: 1.5, color: AppColors.text),
+        bodyMedium: base.textTheme.bodyMedium?.copyWith(
+          fontSize: 15.5, height: 1.5, color: AppColors.text),
+        bodySmall: base.textTheme.bodySmall?.copyWith(
+          fontSize: 13.5, height: 1.45, color: AppColors.muted),
+        labelLarge: base.textTheme.labelLarge?.copyWith(
+          fontSize: 16, color: AppColors.text, fontWeight: FontWeight.w700),
+        labelMedium: base.textTheme.labelMedium?.copyWith(
+          fontSize: 14, color: AppColors.text),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.background,
