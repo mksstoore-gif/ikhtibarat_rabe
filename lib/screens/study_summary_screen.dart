@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../data/curriculum_repository.dart';
 import '../data/models.dart';
@@ -409,7 +410,7 @@ class _StudySummaryScreenState extends State<StudySummaryScreen> {
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
-    late final bytes;
+    late final Uint8List bytes;
     try {
       await Future<void>.delayed(const Duration(milliseconds: 30));
       bytes = await service.build(selected);
