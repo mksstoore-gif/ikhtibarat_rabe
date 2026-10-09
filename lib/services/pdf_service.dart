@@ -53,38 +53,107 @@ class PdfService {
   }
 
 
+  // Fill each A4 page with as many whole questions as will actually fit.
+  // Using a fixed question count wastes paper and clips longer questions.
+  List<List<Question>> paginateQuestions(
+    List<Question> questions, {
+    required bool includeAnswers,
+    required bool includeExplanations,
+  }) {
+    final pages=<List<Question>>[];
+    var current=<Question>[];
+    double y=330;
+    String lastType='';
+    for(final question in questions) {
+      final type=_typeLabel(question.type);
+      final heading=type!=lastType?50.0:0.0;
+      final height=_questionHeight(question,
+        includeAnswers:includeAnswers,
+        includeExplanations:includeExplanations,
+      );
+      // Leave a comfortable margin above the footer (at 1696px).
+      if(current.isNotEmpty && y+heading+height>pageHeightPx-112) {
+        pages.add(current);
+        current=<Question>[];
+        y=330;
+        lastType='';
+      }
+      final effectiveHeading=type!=lastType?50.0:0.0;
+      current.add(question);
+      y+=effectiveHeading+height;
+      lastType=type;
+    }
+    if(current.isNotEmpty) pages.add(current);
+    return pages;
+  }
+
+  double _textHeight(String text,double width,double size,{bool bold=false}) {
+    final painter=TextPainter(
+      text:TextSpan(text:text,style:TextStyle(
+        fontSize:size,
+        fontWeight:bold?FontWeight.bold:FontWeight.normal,
+        height:1.35,
+      )),
+      textDirection:ui.TextDirection.rtl,
+    )..layout(maxWidth:width);
+    return painter.height;
+  }
+
+  double _questionHeight(Question q,{
+    required bool includeAnswers,
+    required bool includeExplanations,
+  }) {
+    var height=_textHeight(q.question,pageWidthPx-360,25,bold:true)+11;
+    if(q.type==QuestionType.trueFalse) {
+      height+=60;
+    } else if(q.options.isNotEmpty) {
+      for(final option in q.options) {
+        final optionHeight=_textHeight(option,pageWidthPx-260,20);
+        height+=(optionHeight>34?optionHeight:34)+5;
+      }
+      height+=6;
+    } else if(includeAnswers) {
+      height+=_textHeight('الإجابة الصحيحة: ${q.correctAnswer}',
+        pageWidthPx-210,20,bold:true)+7;
+    } else {
+      final lines=(q.type==QuestionType.shortAnswer||
+        q.type==QuestionType.reading||q.type==QuestionType.applied)?3:1;
+      height+=5+49.0*lines;
+    }
+    if(includeAnswers&&includeExplanations&&q.explanation.isNotEmpty) {
+      height+=_textHeight('ملاحظة: ${q.explanation}',pageWidthPx-210,17)+8;
+    }
+    return height+18+8; // separator and safety allowance
+  }
+
   Future<void> _addVersion(
     pw.Document doc,
     GeneratedTest test,{
     required bool includeAnswers,
     required bool includeExplanations,
   }) async {
-    final perPage=includeAnswers?3:3;
-    final totalPages=(test.questions.length/perPage).ceil();
-    var pageNumber=1;
-
-    for(var start=0;start<test.questions.length;start+=perPage){
-      final end=(start+perPage>test.questions.length)?test.questions.length:start+perPage;
-      final png=await _renderPage(
-        test,
-        test.questions.sublist(start,end),
-        startNumber:start+1,
+    final pages=paginateQuestions(test.questions,
+      includeAnswers:includeAnswers,
+      includeExplanations:includeExplanations,
+    );
+    var startNumber=1;
+    for(var index=0;index<pages.length;index++) {
+      final group=pages[index];
+      final png=await _renderPage(test,group,
+        startNumber:startNumber,
         includeAnswers:includeAnswers,
         includeExplanations:includeExplanations,
-        pageNumber:pageNumber,
-        totalPages:totalPages,
+        pageNumber:index+1,
+        totalPages:pages.length,
       );
-      doc.addPage(
-        pw.Page(
-          pageFormat:PdfPageFormat.a4,
-          margin:pw.EdgeInsets.zero,
-          build:(_)=>pw.Image(pw.MemoryImage(png),fit:pw.BoxFit.cover),
-        ),
-      );
-      pageNumber++;
+      doc.addPage(pw.Page(
+        pageFormat:PdfPageFormat.a4,
+        margin:pw.EdgeInsets.zero,
+        build:(_)=>pw.Image(pw.MemoryImage(png),fit:pw.BoxFit.cover),
+      ));
+      startNumber+=group.length;
     }
   }
-
 
   Future<Uint8List> _renderResultPage(
     GeneratedTest test,{
