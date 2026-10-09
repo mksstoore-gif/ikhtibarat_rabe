@@ -73,4 +73,24 @@ void main() {
     expect(utf8.decode(bytes.take(4).toList()), '%PDF');
     expect(bytes.length, greaterThan(1000));
   });
+  test('Compact questions share pages; large answer spaces stay intact', () {
+    final tiny = List<Question>.generate(12, (i) => Question(
+      id: 'tiny-$i',
+      subjectId: 'science', unitId: 'unit-1', lessonId: 'lesson-1',
+      skillId: 'skill-1', type: QuestionType.trueFalse,
+      difficulty: Difficulty.easy, question: 'النبات يصنع غذاءه.',
+      options: const [], correctAnswer: 'صح',
+      explanation: '', score: 1, isOfficial: false,
+    ));
+    final service = PdfService();
+    final pages = service.paginateQuestions(tiny,
+      includeAnswers: false,
+      includeExplanations: false,
+    );
+    expect(pages.length, lessThanOrEqualTo(2),
+      reason: 'Twelve short true/false questions should not waste six pages');
+    expect(pages.expand((e) => e).map((e) => e.id).toList(),
+      tiny.map((e) => e.id).toList());
+  });
+
 }
