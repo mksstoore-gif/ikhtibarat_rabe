@@ -4,6 +4,9 @@ on:
   push:
     branches: [ "main", "master" ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -41,3 +44,23 @@ jobs:
         with:
           name: grade-four-tests-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      # Keep a stable, directly downloadable APK for phone-only installation.
+      - name: Publish direct APK download
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          apk="build/app/outputs/flutter-apk/app-release.apk"
+          test -s "$apk"
+          cp "$apk" "ikhtibarat-rabe-latest.apk"
+          if gh release view apk-latest >/dev/null 2>&1; then
+            gh release upload apk-latest "ikhtibarat-rabe-latest.apk" --clobber
+          else
+            gh release create apk-latest "ikhtibarat-rabe-latest.apk" \
+              --target "$GITHUB_SHA" \
+              --title "اختبارات الصف الرابع - أحدث APK" \
+              --notes "نسخة أندرويد التجريبية. إنشاء الاختبارات والملخصات وملفات PDF بدون تسجيل دخول." \
+              --prerelease
+          fi
