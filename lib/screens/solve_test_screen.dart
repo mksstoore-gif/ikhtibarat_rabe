@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../data/app_database.dart';
@@ -335,53 +336,71 @@ class _SolveTestState extends State<SolveTestScreen> {
   }
 
   Future<void> _pdfAction(String action) async {
+    if (!mounted || (action == 'result_share' && !submitted)) return;
+
     final service = PdfService();
-    if (!mounted) return;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
-    try {
-    if (action == 'result_share') {
-      if (!submitted) return;
-      final bytes = await service.buildResultPdf(
-        widget.test,
-        earnedScore: earned,
-        answers: answers,
-      );
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
-      await service.share(bytes, filename: 'تقرير_نتيجة_الطالب.pdf');
-      return;
-    }
-    final isBundle = action.startsWith('bundle');
-    final answersVersion = action.startsWith('answers');
-    final bytes = isBundle
-        ? await service.buildCombinedPdf(widget.test)
-        : await service.buildTestPdf(
-            widget.test,
-            includeAnswers: answersVersion,
-            includeExplanations: answersVersion,
-          );
 
-    if (mounted) Navigator.of(context, rootNavigator: true).pop();
-    if (action.endsWith('share')) {
-      final filename = isBundle
-          ? 'اختبار_ونموذج_الإجابة.pdf'
-          : answersVersion
-              ? 'نموذج_الإجابة.pdf'
-              : 'نسخة_الطالب.pdf';
-      await service.share(bytes, filename: filename);
-    } else {
-      await service.printOrPreview(bytes);
-    }
-    } catch (error) {
-      if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
-        Navigator.of(context, rootNavigator: true).pop();
+    late final Uint8List bytes;
+    try {
+      // Allow the progress overlay to render before heavy PDF work starts.
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      if (action == 'result_share') {
+        bytes = await service.buildResultPdf(
+          widget.test,
+          earnedScore: earned,
+          answers: answers,
+        );
+      } else if (action.startsWith('bundle')) {
+        bytes = await service.buildCombinedPdf(widget.test);
+      } else {
+        final answersVersion = action.startsWith('answers');
+        bytes = await service.buildTestPdf(
+          widget.test,
+          includeAnswers: answersVersion,
+          includeExplanations: answersVersion,
+        );
       }
+      if (bytes.isEmpty) throw StateError('الملف الناتج فارغ');
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر إنشاء ملف PDF. حاول مرة أخرى. (' + error.runtimeType.toString() + ')')),
+        SnackBar(
+          duration: const Duration(seconds: 8),
+          content: Text('تعذر توليد PDF: $error'),
+        ),
+      );
+      return;
+    } finally {
+      // Never pop the test screen when sharing or printing fails.
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (!mounted) return;
+    try {
+      if (action.endsWith('share')) {
+        final filename = action == 'result_share'
+            ? 'تقرير_نتيجة_الطالب.pdf'
+            : action.startsWith('bundle')
+                ? 'اختبار_ونموذج_الإجابة.pdf'
+                : action.startsWith('answers')
+                    ? 'نموذج_الإجابة.pdf'
+                    : 'نسخة_الطالب.pdf';
+        await service.share(bytes, filename: filename);
+      } else {
+        await service.printOrPreview(bytes);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 8),
+          content: Text('تم توليد PDF لكن تعذر فتحه أو مشاركته: $error'),
+        ),
       );
     }
   }
