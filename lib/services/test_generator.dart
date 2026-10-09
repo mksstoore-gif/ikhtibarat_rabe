@@ -1,9 +1,33 @@
 import 'dart:math';
 import '../data/models.dart';
 
+/// Creates varied practice papers without repeating the same question text.
 class TestGenerator {
   final Random _random;
   TestGenerator({Random? random}) : _random = random ?? Random();
+
+  static String questionKey(Question q) =>
+      q.question.replaceAll(RegExp(r'\\s+'), ' ').trim().toLowerCase();
+
+  /// Use the same unique-question pool in the picker and in generation.
+  static List<Question> eligibleQuestions({
+    required String subjectId,
+    required Iterable<String> lessonIds,
+    required Iterable<QuestionType> types,
+    required Iterable<Difficulty> difficulties,
+    required List<Question> bank,
+  }) {
+    final lessonSet = lessonIds.toSet();
+    final typeSet = types.toSet();
+    final difficultySet = difficulties.toSet();
+    final seen = <String>{};
+    return bank.where((q) =>
+        q.subjectId == subjectId &&
+        lessonSet.contains(q.lessonId) &&
+        typeSet.contains(q.type) &&
+        difficultySet.contains(q.difficulty) &&
+        seen.add(questionKey(q))).toList();
+  }
 
   GeneratedTest generate({
     required String subjectId,
@@ -19,63 +43,52 @@ class TestGenerator {
     String schoolName = '',
     String className = '',
   }) {
-    final pool = bank.where((q) =>
-      q.subjectId == subjectId &&
-      lessonIds.contains(q.lessonId) &&
-      types.contains(q.type) &&
-      difficulties.contains(q.difficulty)
-    ).toList();
-
+    final pool = eligibleQuestions(
+      subjectId: subjectId,
+      lessonIds: lessonIds,
+      types: types,
+      difficulties: difficulties,
+      bank: bank,
+    );
     if (pool.length < count) {
-      throw StateError('بنك الأسئلة المطابق يحتوي ${pool.length} سؤالًا فقط، بينما المطلوب $count.');
+      throw StateError(
+        'توجد ' + pool.length.toString() +
+        ' أسئلة متنوعة فقط بهذه الإعدادات بعد استبعاد المكرر. '
+        'اختر دروسًا أكثر أو قلّل عدد الأسئلة.');
     }
 
-    // Build a teacher-like balanced exam: cover lessons first, then vary
-    // question type and difficulty instead of pure random selection.
+    // Choose the least represented lesson/type/difficulty first. Shuffle
+    // beforehand to avoid predictable ties while keeping test results stable
+    // for a seeded Random in unit tests.
+    final available = [...pool]..shuffle(_random);
     final selected = <Question>[];
-    final used = <String>{};
-    final shuffledLessons = [...lessonIds]..shuffle(_random);
-
-    for (final lessonId in shuffledLessons) {
-      if (selected.length >= count) break;
-      final lessonPool = pool.where((q) => q.lessonId == lessonId).toList()
-        ..shuffle(_random);
-      if (lessonPool.isNotEmpty) {
-        selected.add(lessonPool.first);
-        used.add(lessonPool.first.id);
-      }
-    }
-
-    final preferredTypes = [
-      QuestionType.multipleChoice,
-      QuestionType.trueFalse,
-      QuestionType.fillBlank,
-      QuestionType.shortAnswer,
-      QuestionType.numeric,
-      QuestionType.applied,
-      QuestionType.reading,
-    ].where(types.contains).toList();
-
+    final lessonUse = <String, int>{};
+    final typeUse = <QuestionType, int>{};
+    final difficultyUse = <Difficulty, int>{};
     while (selected.length < count) {
-      Question? pick;
-      for (final type in preferredTypes) {
-        final candidates = pool.where((q) => !used.contains(q.id) && q.type == type).toList()
-          ..shuffle(_random);
-        if (candidates.isNotEmpty) {
-          pick = candidates.first;
-          break;
+      var bestIndex = 0;
+      var bestScore = 1 << 30;
+      for (var i = 0; i < available.length; i++) {
+        final q = available[i];
+        final score =
+            (lessonUse[q.lessonId] ?? 0) * 20 +
+            (typeUse[q.type] ?? 0) * 8 +
+            (difficultyUse[q.difficulty] ?? 0) * 3 +
+            (q.question.startsWith('أي العبارتين الآتيتين صحيحة؟') ? 20 : 0);
+        if (score < bestScore) {
+          bestScore = score;
+          bestIndex = i;
         }
       }
-      pick ??= (pool.where((q) => !used.contains(q.id)).toList()..shuffle(_random)).first;
-      selected.add(pick);
-      used.add(pick.id);
-      if (preferredTypes.isNotEmpty) {
-        preferredTypes.add(preferredTypes.removeAt(0));
-      }
+      final q = available.removeAt(bestIndex);
+      selected.add(q);
+      lessonUse[q.lessonId] = (lessonUse[q.lessonId] ?? 0) + 1;
+      typeUse[q.type] = (typeUse[q.type] ?? 0) + 1;
+      difficultyUse[q.difficulty] = (difficultyUse[q.difficulty] ?? 0) + 1;
     }
 
     return GeneratedTest(
-      id: 'test_${DateTime.now().microsecondsSinceEpoch}',
+      id: 'test_' + DateTime.now().microsecondsSinceEpoch.toString(),
       subjectId: subjectId,
       subjectName: subjectName,
       lessonIds: lessonIds,
