@@ -23,11 +23,11 @@ class TrainingQuestionBank {
         ..addAll(rotated);
     }
     return [
-      _q(l,base,QuestionType.trueFalse,f.truth,'صح',const ['صح','خطأ'],'العبارة صحيحة.'),
-      _q(l,base+1,QuestionType.trueFalse,f.falsehood,'خطأ',const ['صح','خطأ'],'العبارة غير صحيحة.'),
-      _q(l,base+2,QuestionType.multipleChoice,f.question,f.answer,options,'اختر الإجابة التي توافق مفهوم الدرس.'),
-      _q(l,base+3,QuestionType.multipleChoice,'أي العبارتين الآتيتين صحيحة؟',f.truth,[f.truth,f.falsehood],'راجع الفكرة الأساسية في الدرس.'),
-      _q(l,base+4,QuestionType.shortAnswer,f.question,f.answer,const [],'إجابة قصيرة مباشرة من مفهوم الدرس.'),
+      _q(l,base,QuestionType.trueFalse,f.truth,'صح',const ['صح','خطأ'],f.truth),
+      _q(l,base+1,QuestionType.trueFalse,f.falsehood,'خطأ',const ['صح','خطأ'],'التصحيح: ' + f.truth),
+      _q(l,base+2,QuestionType.multipleChoice,f.question,f.answer,options,f.truth),
+      _q(l,base+3,QuestionType.multipleChoice,'أي العبارتين الآتيتين صحيحة؟',f.truth,[f.truth,f.falsehood],f.truth),
+      _q(l,base+4,QuestionType.shortAnswer,f.question,f.answer,const [],f.truth),
     ];
   }
 
