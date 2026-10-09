@@ -158,8 +158,7 @@ class _SolveTestState extends State<SolveTestScreen> {
     await _showResult();
   }
 
-  String _normalize(String value) =>
-      value.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
+  String _normalize(String value) => normalizeStudentAnswer(value);
 
   Future<void> _showResult() async {
     final percent = widget.test.totalScore == 0
